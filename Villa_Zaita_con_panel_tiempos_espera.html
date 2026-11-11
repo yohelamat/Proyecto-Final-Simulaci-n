@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Twin 3D - Estación Villa Zaita</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js para gráficas históricas -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Three.js y OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #e2e8f0; overflow: hidden; margin: 0; padding: 0; }
+        #canvas-container { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; }
+        
+        /* Panel Izquierdo (Dashboard) */
+        #ui-panel-left { 
+            position: absolute; top: 0; left: 0; height: 100vh; width: 100%; max-width: 320px; z-index: 10; 
+            background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); border-right: 1px solid rgba(255,255,255,0.1); 
+            display: flex; flex-direction: column; overflow-y: auto; 
+        }
+
+        /* Panel Derecho (Controles y Gráfica) */
+        #ui-panel-right { 
+            position: absolute; top: 0; right: 0; height: 100vh; width: 100%; max-width: 320px; z-index: 10; 
+            background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); border-left: 1px solid rgba(255,255,255,0.1); 
+            display: flex; flex-direction: column; overflow-y: auto; 
+        }
+        
+        /* Custom Scrollbar */
+        #ui-panel-left::-webkit-scrollbar, #ui-panel-right::-webkit-scrollbar { width: 6px; }
+        #ui-panel-left::-webkit-scrollbar-track, #ui-panel-right::-webkit-scrollbar-track { background: transparent; }
+        #ui-panel-left::-webkit-scrollbar-thumb, #ui-panel-right::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
+        
+        .control-group { margin-bottom: 1.25rem; }
+        .slider { -webkit-appearance: none; width: 100%; height: 4px; border-radius: 5px; background: #475569; outline: none; margin-top: 0.5rem; }
+        .slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #10b981; cursor: pointer; transition: transform .1s; }
+        .slider::-webkit-slider-thumb:hover { transform: scale(1.2); }
+        
+        .stat-card { background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(255,255,255,0.05); border-radius: 0.5rem; padding: 0.75rem; display: flex; flex-direction: column; }
+        .stat-value { font-size: 1.25rem; font-weight: 700; color: #38bdf8; }
+        .stat-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; margin-bottom: 0.25rem;}
+        
+        /* Etiquetas 3D */
+        .badge-3d { position: absolute; padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; pointer-events: none; transition: opacity 0.2s; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3); }
+        #instructions { position: absolute; bottom: 20px; right: 20px; z-index: 10; background: rgba(0,0,0,0.7); padding: 10px 15px; border-radius: 8px; font-size: 0.75rem; pointer-events: none; color: #cbd5e1; border: 1px solid rgba(255,255,255,0.1); }
+    </style>
+</head>
+<body>
+
+    <!-- Contenedor 3D -->
+    <div id="canvas-container"></div>
+    
+    <!-- Letreros 3D sincronizados con la cámara -->
+    <div id="labels-container" class="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden z-0">
+        <div id="lbl-anden1" class="badge-3d bg-slate-800/90 text-slate-200 border border-slate-600">Andén 1</div>
+        <div id="lbl-anden2" class="badge-3d bg-slate-800/90 text-slate-200 border border-slate-600">Andén 2</div>
+        <div id="lbl-in" class="badge-3d bg-emerald-900/90 text-emerald-100 border border-emerald-600">Control IN</div>
+        <div id="lbl-out" class="badge-3d bg-rose-900/90 text-rose-100 border border-rose-600">Control OUT</div>
+    </div>
+
+    <!-- UI Overlay Izquierdo (Dashboard Estadístico) -->
+    <div id="ui-panel-left" class="p-5 shadow-2xl">
+        <div class="mb-5 border-b border-slate-700/50 pb-4">
+            <h1 class="text-xl font-bold text-white flex items-center gap-2 tracking-tight">
+                <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.7)]"></span>
+                Digital Twin
+            </h1>
+            <p class="text-xs text-slate-400 mt-1.5 leading-relaxed">Simulación SED - Estación Villa Zaita<br>Línea 1 Metro de Panamá</p>
+        </div>
+
+        <!-- Dashboard Estadístico -->
+        <div class="grid grid-cols-2 gap-3 mb-6">
+            <div class="stat-card col-span-2 text-center bg-slate-800/90 border-slate-600">
+                <span class="stat-label">Reloj de Simulación (Hora Pico)</span>
+                <span class="stat-value text-white text-2xl tracking-widest font-mono" id="ui-time">06:30:00</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Ingresos</span>
+                <span class="stat-value text-emerald-400" id="ui-arrivals">0</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Abordajes</span>
+                <span class="stat-value text-indigo-400" id="ui-boarded">0</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Fila Torniquete</span>
+                <span class="stat-value text-amber-400" id="ui-turnstile-queue">0</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Fila Andenes</span>
+                <span class="stat-value text-blue-400" id="ui-platform-queue">0</span>
+            </div>
+            <!-- KPI Crítico: Rezagados -->
+            <div class="stat-card col-span-2 border-rose-500/30 bg-rose-950/40 relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-16 h-16 bg-rose-500/10 rounded-bl-full -mr-8 -mt-8"></div>
+                <span class="stat-label text-rose-300">Saturación: Rezagados</span>
+                <div class="flex justify-between items-baseline">
+                    <span class="stat-value text-rose-400 text-3xl" id="ui-rezagados">0</span>
+                    <span class="text-sm font-bold text-rose-300 bg-rose-900/50 px-2 py-1 rounded" id="ui-rezagados-pct">0.0%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráfica Histórica (Chart.js) -->
+        <div class="mb-2 p-3 bg-slate-800/60 border border-slate-700/50 rounded-lg shadow-inner">
+            <h4 class="text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-2 border-b border-slate-700 pb-1 flex justify-between">
+                <span>Histórico: Saturación</span>
+                <span class="text-rose-400">Meta: 1-2%</span>
+            </h4>
+            <div class="w-full h-28">
+                <canvas id="historyChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- UI Overlay Derecho (Controles y Gráfica) -->
+    <div id="ui-panel-right" class="p-5 shadow-2xl">
+        <!-- Modelo Matemático Activo -->
+        <div class="mb-5 p-3 bg-slate-800/50 border border-slate-700/50 rounded-lg">
+            <h4 class="text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-2 border-b border-slate-700 pb-1">Motor Estocástico Activo</h4>
+            <div class="flex justify-between items-center text-[10px] text-slate-400 mb-1">
+                <span>Llegadas:</span> <span class="text-emerald-400 font-mono">Exponencial (λ)</span>
+            </div>
+            <div class="flex justify-between items-center text-[10px] text-slate-400">
+                <span>Torniquetes:</span> <span class="text-amber-400 font-mono">Lognormal (μ, σ)</span>
+            </div>
+        </div>
+
+        <!-- Panel de Tiempos de Espera (aporte adicional) -->
+        <div class="mb-5 p-3 bg-slate-800/60 border border-cyan-500/30 rounded-lg shadow-inner">
+            <h4 class="text-[10px] font-bold text-cyan-300 uppercase tracking-wider mb-3 border-b border-slate-700 pb-2">Panel de Tiempos de Espera</h4>
+            <div class="grid grid-cols-2 gap-2">
+                <div class="stat-card">
+                    <span class="stat-label">Promedio en andén</span>
+                    <span class="stat-value text-cyan-300" id="ui-platform-avg">0.0 s</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Último registrado</span>
+                    <span class="stat-value text-indigo-300" id="ui-platform-last">--</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Mínimo</span>
+                    <span class="stat-value text-emerald-300" id="ui-platform-min">--</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Máximo</span>
+                    <span class="stat-value text-amber-300" id="ui-platform-max">--</span>
+                </div>
+            </div>
+            <p class="text-[10px] text-slate-400 mt-2">Se mide desde la llegada al andén hasta el abordaje del tren.</p>
+        </div>
+
+        <!-- Controles de Parámetros -->
+        <div class="flex-1">
+            <div class="control-group">
+                <label class="text-xs text-slate-300 flex justify-between font-medium">
+                    <span>Llegada Promedio (λ)</span>
+                    <span id="val-arrival" class="text-emerald-400 font-mono">1.2s</span>
+                </label>
+                <input type="range" id="param-arrival" class="slider" min="0.2" max="5" step="0.1" value="1.2">
+            </div>
+
+            <div class="control-group">
+                <label class="text-xs text-slate-300 flex justify-between font-medium">
+                    <span>Validación Media (μ)</span>
+                    <span id="val-turnstile" class="text-amber-400 font-mono">3.0s</span>
+                </label>
+                <input type="range" id="param-turnstile" class="slider" min="1" max="8" step="0.5" value="3.0">
+            </div>
+
+            <div class="control-group">
+                <label class="text-xs text-slate-300 flex justify-between font-medium">
+                    <span>Headway Tren (Fijo)</span>
+                    <span id="val-headway" class="text-blue-400 font-mono">90s</span>
+                </label>
+                <input type="range" id="param-headway" class="slider" min="45" max="300" step="5" value="90">
+            </div>
+            
+            <!-- Nuevo Control: Dwell Time -->
+            <div class="control-group">
+                <label class="text-xs text-slate-300 flex justify-between font-medium">
+                    <span>Dwell Time (Parada)</span>
+                    <span id="val-dwell" class="text-purple-400 font-mono">22s</span>
+                </label>
+                <input type="range" id="param-dwell" class="slider" min="10" max="60" step="1" value="22">
+            </div>
+            
+             <div class="control-group mt-6">
+                <label class="text-xs text-slate-300 flex justify-between font-medium">
+                    <span>Time Warp (Aceleración)</span>
+                    <span id="val-speed" class="text-white font-mono">x5</span>
+                </label>
+                <input type="range" id="param-speed" class="slider" min="1" max="20" step="1" value="5">
+            </div>
+
+            <!-- Botones de Control de la Simulación -->
+            <div class="mt-8 pb-4 flex gap-2">
+                <button id="btn-play" class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded transition-colors shadow-lg">
+                    ▶ Play
+                </button>
+                <button id="btn-pause" class="flex-1 py-2 bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold rounded transition-colors shadow-lg">
+                    ⏸ Pausa
+                </button>
+                <button id="btn-reset" class="flex-1 py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold rounded transition-colors shadow-lg">
+                    🔄 Reset
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="instructions">
+        🖱️ <b>Click Izq:</b> Rotar | <b>Clic Der:</b> Pan | <b>Rueda:</b> Zoom
+    </div>
+
+    <script>
+        // ==========================================
+        // LIBRERÍA ESTADÍSTICA (MOTOR ESTOCÁSTICO)
+        // ==========================================
+        
+        /**
+         * Genera un tiempo aleatorio basado en una Distribución Exponencial.
+         * Ideal para simular la tasa de llegada de clientes (Proceso de Poisson).
+         */
+        function getExponentialTime(mean) {
+            return -Math.log(1.0 - Math.random()) * mean;
+        }
+
+        /**
+         * Genera un tiempo basado en una Distribución Lognormal mediante Box-Muller.
+         * Justificación: Ajusta a los datos empíricos de MPSA, donde la mayoría tarda 3s,
+         * pero existen casos atípicos (adultos mayores, falta de saldo) que tardan hasta 8s.
+         */
+        function getLognormalTime(meanVal, stdDev) {
+            // 1. Transformación de Box-Muller para Normal Estandar (Z)
+            let u1 = Math.max(Math.random(), 0.0001); // Evitar log(0)
+            let u2 = Math.random();
+            let z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+            
+            // 2. Parámetros Lognormales (mu y sigma a partir de media y varianza)
+            let varVal = stdDev * stdDev;
+            let mu = Math.log(meanVal) - 0.5 * Math.log(1 + (varVal / (meanVal * meanVal)));
+            let sigma = Math.sqrt(Math.log(1 + (varVal / (meanVal * meanVal))));
+            
+            // 3. Resultado Lognormal
+            let time = Math.exp(mu + sigma * z0);
+            
+            // 4. Clamping operativo: Ningún pasajero tarda menos de 1.5s ni más de 9s (Fallo total)
+            return Math.max(1.5, Math.min(time, 9.0));
+        }
+
+
+        // ==========================================
+        // UI BINDINGS & ESTADOS
+        // ==========================================
+        const uiTime = document.getElementById('ui-time');
+        const uiArrivals = document.getElementById('ui-arrivals');
+        const uiTurnstileQueue = document.getElementById('ui-turnstile-queue');
+        const uiPlatformQueue = document.getElementById('ui-platform-queue');
+        const uiBoarded = document.getElementById('ui-boarded');
+        const uiRezagados = document.getElementById('ui-rezagados');
+        const uiRezagadosPct = document.getElementById('ui-rezagados-pct');
+        const uiPlatformAvg = document.getElementById('ui-platform-avg');
+        const uiPlatformLast = document.getElementById('ui-platform-last');
+        const uiPlatformMin = document.getElementById('ui-platform-min');
+        const uiPlatformMax = document.getElementById('ui-platform-max');
+        
+        const paramArrival = document.getElementById('param-arrival');
+        const paramTurnstile = document.getElementById('param-turnstile');
+        const paramHeadway = document.getElementById('param-headway');
+        const paramDwell = document.getElementById('param-dwell');
+        const paramSpeed = document.getElementById('param-speed');
+        
+        paramArrival.addEventListener('input', e => document.getElementById('val-arrival').innerText = parseFloat(e.target.value).toFixed(1) + 's');
+        paramTurnstile.addEventListener('input', e => document.getElementById('val-turnstile').innerText = parseFloat(e.target.value).toFixed(1) + 's');
+        paramHeadway.addEventListener('input', e => document.getElementById('val-headway').innerText = e.target.value + 's');
+        paramDwell.addEventListener('input', e => document.getElementById('val-dwell').innerText = e.target.value + 's');
+        paramSpeed.addEventListener('input', e => document.getElementById('val-speed').innerText = 'x' + e.target.value);
+        
+        let isPaused = false;
+        document.getElementById('btn-play').addEventListener('click', () => { isPaused = false; });
+        document.getElementById('btn-pause').addEventListener('click', () => { isPaused = true; });
+        document.getElementById('btn-reset').addEventListener('click', () => { resetSimulation(); isPaused = false; });
+
+        // ==========================================
+        // VARIABLES GLOBALES SED (Simulación de Eventos Discretos)
+        // ==========================================
+        let scene, camera, renderer, controls, clock;
+        
+        // Listas de Entidades y Recursos
+        let passengers = [];    // Entidades dinámicas
+        let turnstilesIn = [];  // Recursos de entrada
+        let turnstilesOut = []; // Recursos de salida
+        let trains = [];        // Recursos sistémicos
+        
+        // Reloj y Variables de Estado
+        let simTimeElapsed = 0;
+        let baseTime = 6 * 3600 + 30 * 60; // Inicia 06:30:00 a.m.
+        
+        // Controladores de eventos y gráficas
+        let nextPassengerArrivalTime = 0; 
+        let historyChart = null;
+        let lastChartUpdateTime = 0;
+        
+        let stats = { arrivals: 0, departures: 0, boarded: 0, rezagados: 0, waitingTracker: new Set(), platformWaitTotal: 0, platformWaitCount: 0, platformWaitMin: Infinity, platformWaitMax: 0, platformWaitLast: null };
+
+        // Parámetro de advertencia de puertas
+        const DOOR_WARNING = 3;
+
+        // Caché de Geometrías y Materiales (Optimización)
+        const torsoGeo = new THREE.CylinderGeometry(1.5, 1.5, 5, 8);
+        const headGeo = new THREE.SphereGeometry(1.5, 8, 8);
+        const turnstileGeo = new THREE.BoxGeometry(8, 12, 12);
+        const turnstileMatIn = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.3 }); // Pizarra (Entrada)
+        const turnstileMatOut = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.3 }); // Gris (Salida)
+        const activeMat = new THREE.MeshStandardMaterial({ color: 0x10b981, emissive: 0x10b981, emissiveIntensity: 0.2 }); // Verde Aprobado
+        const errorMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b }); // Ambar (Demora)
+        const trainMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.2 }); // Blanco Tren
+
+        window.onload = function() {
+            initThree();
+            createArchitecture();
+            initChart();
+            resetSimulation();
+            animate();
+        };
+
+        // ==========================================
+        // SETUP GRÁFICA HISTÓRICA (CHART.JS)
+        // ==========================================
+        function initChart() {
+            const ctx = document.getElementById('historyChart').getContext('2d');
+            historyChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [], // Tiempos
+                    datasets: [{
+                        label: '% Rezagados',
+                        data: [],
+                        borderColor: '#fb7185', // rose-400
+                        backgroundColor: 'rgba(251, 113, 133, 0.2)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4, // Curvas suaves
+                        pointRadius: 0, // Ocultar puntos para línea continua
+                        pointHitRadius: 10
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { display: false }, // Ocultamos el eje X para ahorrar espacio
+                        y: { 
+                            display: true, 
+                            min: 0, 
+                            max: 10, // Rango máximo 10%
+                            ticks: { 
+                                color: '#94a3b8', 
+                                font: { size: 9 }, 
+                                stepSize: 2,
+                                callback: function(value) { return value + '%' } 
+                            },
+                            grid: { color: 'rgba(51, 65, 85, 0.4)' }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: true }
+                    },
+                    animation: false // Desactivamos animaciones internas para mejor rendimiento con TimeWarp
+                }
+            });
+        }
+
+        // ==========================================
+        // SETUP RENDERIZADO 3D
+        // ==========================================
+        function initThree() {
+            const container = document.getElementById('canvas-container');
+            
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0f172a); // Fondo oscuro
+            scene.fog = new THREE.FogExp2(0x0f172a, 0.0012); // Niebla atmosférica
+
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 2000);
+            camera.position.set(-200, 600, 900); // Vista isométrica inicial atractiva
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.target.set(0, 0, 0);
+            controls.maxPolarAngle = Math.PI / 2 - 0.05; // No ver debajo del suelo
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.update();
+
+            clock = new THREE.Clock();
+
+            // Iluminación Profesional
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.7);
+            dirLight.position.set(300, 600, 200);
+            dirLight.castShadow = true;
+            dirLight.shadow.camera.left = -500;
+            dirLight.shadow.camera.right = 500;
+            dirLight.shadow.camera.top = 500;
+            dirLight.shadow.camera.bottom = -500;
+            dirLight.shadow.camera.far = 1500;
+            dirLight.shadow.mapSize.width = 2048;
+            dirLight.shadow.mapSize.height = 2048;
+            scene.add(dirLight);
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        }
+
+        // ==========================================
+        // ARQUITECTURA DE LA ESTACIÓN (LAYOUT ESPACIAL)
+        // ==========================================
+        function createArchitecture() {
+            // Suelo (Vestíbulo Nivel 0)
+            const groundGeo = new THREE.PlaneGeometry(1600, 1600);
+            const groundMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.9 });
+            const ground = new THREE.Mesh(groundGeo, groundMat);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            // Andenes Laterales (Nivel +40)
+            const platGeo = new THREE.BoxGeometry(800, 40, 140);
+            const platMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8 }); 
+            const yellowMat = new THREE.MeshStandardMaterial({ color: 0xeab308 }); // Línea de seguridad
+            
+            // Andén 1 (Norte)
+            const anden1 = new THREE.Mesh(platGeo, platMat);
+            anden1.position.set(0, 20, -160);
+            anden1.receiveShadow = true;
+            anden1.castShadow = true;
+            scene.add(anden1);
+            const line1 = new THREE.Mesh(new THREE.BoxGeometry(800, 41, 4), yellowMat);
+            line1.position.set(0, 20, -92);
+            scene.add(line1);
+
+            // Andén 2 (Sur)
+            const anden2 = new THREE.Mesh(platGeo, platMat);
+            anden2.position.set(0, 20, 160);
+            anden2.receiveShadow = true;
+            anden2.castShadow = true;
+            scene.add(anden2);
+            const line2 = new THREE.Mesh(new THREE.BoxGeometry(800, 41, 4), yellowMat);
+            line2.position.set(0, 20, 92);
+            scene.add(line2);
+
+            // Foso de Vías (Nivel +12.5)
+            const trackBedGeo = new THREE.BoxGeometry(800, 25, 180);
+            const trackBedMat = new THREE.MeshStandardMaterial({ color: 0x020617 }); // Más oscuro
+            const trackBed = new THREE.Mesh(trackBedGeo, trackBedMat);
+            trackBed.position.set(0, 12.5, 0); 
+            trackBed.receiveShadow = true;
+            scene.add(trackBed);
+
+            // Rieles (Visuales)
+            const railMat = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.8 });
+            [-110, -50, 50, 110].forEach(z => {
+                let rail = new THREE.Mesh(new THREE.BoxGeometry(800, 2, 2), railMat);
+                rail.position.set(0, 26, z);
+                scene.add(rail);
+            });
+
+            // Escaleras conectando Vestíbulo con Andenes
+            const rampGeo = new THREE.BoxGeometry(108, 5, 60);
+            const rampMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1 });
+            
+            const createRamp = (x, z, slope) => {
+                const ramp = new THREE.Mesh(rampGeo, rampMat);
+                ramp.position.set(x, 20, z); // Centro Y=20
+                ramp.rotation.z = slope;
+                ramp.receiveShadow = true;
+                ramp.castShadow = true;
+                scene.add(ramp);
+            };
+
+            createRamp(-300, -160, -0.38); // Andén 1 Salida
+            createRamp(300, -160, 0.38);   // Andén 1 Entrada
+            createRamp(-300, 160, -0.38);  // Andén 2 Salida
+            createRamp(300, 160, 0.38);    // Andén 2 Entrada
+        }
+
+        // ==========================================
+        // INICIALIZACIÓN Y RESET DEL ESTADO
+        // ==========================================
+        function resetSimulation() {
+            simTimeElapsed = 0;
+            stats = { arrivals: 0, departures: 0, boarded: 0, rezagados: 0, waitingTracker: new Set(), platformWaitTotal: 0, platformWaitCount: 0, platformWaitMin: Infinity, platformWaitMax: 0, platformWaitLast: null };
+            
+            // Disparador inicial Lognormal/Exponencial
+            nextPassengerArrivalTime = getExponentialTime(parseFloat(paramArrival.value));
+
+            // Limpiar gráfica histórica
+            lastChartUpdateTime = 0;
+            if (historyChart) {
+                historyChart.data.labels = [];
+                historyChart.data.datasets[0].data = [];
+                historyChart.update();
+            }
+
+            // Limpieza de memoria 3D
+            passengers.forEach(p => scene.remove(p.mesh));
+            passengers = [];
+            turnstilesIn.forEach(t => scene.remove(t.mesh));
+            turnstilesIn = [];
+            turnstilesOut.forEach(t => scene.remove(t.mesh));
+            turnstilesOut = [];
+            trains.forEach(t => scene.remove(t.mesh));
+            trains = [];
+
+            // Recursos: Torniquetes de ENTRADA (Mapeados a la derecha del Layout)
+            for(let i=0; i<6; i++) {
+                let mesh = new THREE.Mesh(turnstileGeo, turnstileMatIn);
+                mesh.position.set(80 + (i*25), 6, 280);
+                mesh.castShadow = true;
+                scene.add(mesh);
+                turnstilesIn.push({ id: `IN_${i}`, pos: mesh.position, queue: [], processing: null, timer: 0, mesh: mesh });
+            }
+
+            // Recursos: Torniquetes de SALIDA (Mapeados a la izquierda)
+            for(let i=0; i<6; i++) {
+                let mesh = new THREE.Mesh(turnstileGeo, turnstileMatOut);
+                mesh.position.set(-205 + (i*25), 6, 280);
+                mesh.castShadow = true;
+                scene.add(mesh);
+                turnstilesOut.push({ id: `OUT_${i}`, pos: mesh.position, queue: [], processing: null, timer: 0, mesh: mesh });
+            }
+
+            // Recursos Sistémicos: Trenes (Operación Reversa)
+            trains.push(new Train(1, -77)); // Andén 1 (Norte)
+            trains.push(new Train(2, 77));  // Andén 2 (Sur)
+        }
+
+        // ==========================================
+        // DEFINICIÓN DE ENTIDADES Y RECURSOS (CLASES)
+        // ==========================================
+        
+        class Train {
+            constructor(id, zPos) {
+                this.id = id; 
+                this.zPos = zPos;
+                this.state = 'AWAY'; // Máquina de estados: AWAY, ARRIVING, BOARDING, DEPARTING
+                
+                // Headway fijo (Determinístico)
+                this.timer = parseFloat(paramHeadway.value) + (id === 2 ? parseFloat(paramHeadway.value)/2 : 0);
+                
+                this.group = new THREE.Group();
+                this.group.visible = false; 
+                
+                const trainLen = 560;
+                
+                // Cuerpo Principal
+                const bodyGeo = new THREE.BoxGeometry(trainLen, 30, 26);
+                const body = new THREE.Mesh(bodyGeo, trainMat);
+                body.position.set(0, 15, 0);
+                body.castShadow = true;
+                body.receiveShadow = true;
+                this.group.add(body);
+
+                // Diseño Alstom Metropolis (Redondeado)
+                const cabinGeo = new THREE.CylinderGeometry(13, 13, 26, 16);
+                const frontCab = new THREE.Mesh(cabinGeo, trainMat);
+                frontCab.rotation.x = Math.PI / 2;
+                frontCab.position.set(-trainLen/2, 15, 0);
+                frontCab.castShadow = true;
+                this.group.add(frontCab);
+
+                const backCab = new THREE.Mesh(cabinGeo, trainMat);
+                backCab.rotation.x = Math.PI / 2;
+                backCab.position.set(trainLen/2, 15, 0);
+                backCab.castShadow = true;
+                this.group.add(backCab);
+
+                // Franjas Oficiales (MPSA)
+                const redStripe = new THREE.Mesh(new THREE.BoxGeometry(trainLen + 15, 2, 26.5), new THREE.MeshStandardMaterial({color: 0xdc2626}));
+                redStripe.position.set(0, 10, 0);
+                this.group.add(redStripe);
+                
+                const blueStripe = new THREE.Mesh(new THREE.BoxGeometry(trainLen + 15, 2, 26.5), new THREE.MeshStandardMaterial({color: 0x2563eb}));
+                blueStripe.position.set(0, 14, 0);
+                this.group.add(blueStripe);
+
+                // Ventanas Negras
+                const glassMat = new THREE.MeshStandardMaterial({color: 0x0f172a, roughness: 0.1});
+                for(let i=0; i<6; i++) { 
+                    let sideWin = new THREE.Mesh(new THREE.BoxGeometry(40, 12, 26.2), glassMat);
+                    sideWin.position.set(-200 + (i*80), 18, 0);
+                    this.group.add(sideWin);
+                }
+
+                // Posicionado en el riel correspondiente
+                this.group.position.set(800, 25, this.zPos);
+                scene.add(this.group);
+                this.mesh = this.group; 
+            }
+
+            update(dt) {
+                if (this.state === 'AWAY') {
+                    this.group.visible = false; 
+                    this.timer -= dt;
+                    if (this.timer <= 0) {
+                        this.state = 'ARRIVING';
+                        this.group.position.x = 800; // Viene desde la derecha (San Isidro)
+                        this.group.visible = true; 
+                    }
+                } 
+                else if (this.state === 'ARRIVING') {
+                    this.group.position.x -= 350 * dt;
+                    if (this.group.position.x <= 0) {
+                        this.group.position.x = 0;
+                        this.state = 'BOARDING';
+                        this.timer = parseFloat(paramDwell.value); // Dwell Time ajustable desde UI
+                        
+                        // Generar pasajeros de desembarque (Eventos exógenos)
+                        let numAlighting = Math.floor(Math.random() * 15) + 10;
+                        for(let i=0; i<numAlighting; i++) {
+                            let pZ = this.id === 1 ? -95 : 95;
+                            let pX = (Math.random() * 400) - 200;
+                            passengers.push(new Passenger(true, this.id, pX, pZ));
+                        }
+                    }
+                }
+                else if (this.state === 'BOARDING') {
+                    this.timer -= dt;
+                    // Evaluar Rezagados (Meta 1-2%) al momento del cierre de puertas
+                    if (this.timer <= 0) {
+                        this.state = 'DEPARTING';
+                        
+                        passengers.forEach(p => {
+                            if (!p.isOutbound && p.platform === this.id && (p.state === 'WAITING' || p.state === 'WALKING_PLATFORM')) {
+                                if (!stats.waitingTracker.has(p.id)) {
+                                    stats.rezagados++;
+                                    stats.waitingTracker.add(p.id); // Solo se cuenta una vez por pasajero
+                                }
+                            }
+                        });
+                    }
+                }
+                else if (this.state === 'DEPARTING') {
+                    // Maniobra terminal: sale por la misma vía hacia Albrook
+                    this.group.position.x += 350 * dt;
+                    if (this.group.position.x > 800) {
+                        this.state = 'AWAY';
+                        this.timer = parseFloat(paramHeadway.value);
+                    }
+                }
+            }
+        }
+
+        class Passenger {
+            constructor(isOutbound, platformId = null, startX = 0, startZ = 0) {
+                this.id = Math.random().toString(36).substr(2, 9);
+                this.isOutbound = isOutbound;
+                
+                // Variabilidad de velocidad humana (estocástico simple)
+                this.speed = 45 + Math.random() * 25; 
+                this.platform = platformId;
+                this.platformArrivalTime = null; // Inicio del cronómetro de espera en el andén
+
+                // Visuales
+                const color = isOutbound ? 0xfbbf24 : new THREE.Color(`hsl(${Math.random()*360}, 75%, 55%)`);
+                this.group = new THREE.Group();
+                const paxMat = new THREE.MeshStandardMaterial({color: color});
+                
+                const torso = new THREE.Mesh(torsoGeo, paxMat);
+                torso.position.y = 2.5;
+                torso.castShadow = true;
+                
+                const head = new THREE.Mesh(headGeo, paxMat);
+                head.position.y = 6;
+                head.castShadow = true;
+                
+                this.group.add(torso);
+                this.group.add(head);
+                this.mesh = this.group;
+                
+                this.target = new THREE.Vector3();
+                this.turnstile = null;
+
+                if (isOutbound) {
+                    this.state = 'DISEMBARKING';
+                    this.mesh.position.set(startX, 40, startZ); 
+                    scene.add(this.mesh);
+                    this.target.set(-350, 40, this.platform === 1 ? -160 : 160);
+                } else {
+                    this.state = 'WALKING_TO_IN';
+                    this.mesh.position.set(250 + Math.random()*50, 0, 400); 
+                    scene.add(this.mesh);
+                    this.chooseTurnstile(turnstilesIn);
+                }
+            }
+
+            // Enrutamiento Inteligente (Balanceo de Colas)
+            chooseTurnstile(tsArray) {
+                let minQueueLen = Math.min(...tsArray.map(t => t.queue.length));
+                let bestOptions = tsArray.filter(t => t.queue.length === minQueueLen);
+                this.turnstile = bestOptions[Math.floor(Math.random() * bestOptions.length)];
+                
+                this.turnstile.queue.push(this.id);
+                this.updateQueueTarget();
+            }
+
+            updateQueueTarget() {
+                if (!this.turnstile) return;
+                const idx = this.turnstile.queue.indexOf(this.id);
+                // Separación física en la fila para evitar colisiones visuales
+                if (this.isOutbound) {
+                    this.target.set(this.turnstile.pos.x, 0, this.turnstile.pos.z - 15 - (idx*12));
+                } else {
+                    this.target.set(this.turnstile.pos.x, 0, this.turnstile.pos.z + 15 + (idx*12));
+                }
+            }
+
+            move(dt) {
+                let dir = new THREE.Vector3().subVectors(this.target, this.mesh.position);
+                let dist = dir.length();
+                
+                // Efecto de esfuerzo: escaleras reducen la velocidad
+                let currentSpeed = (this.state === 'CLIMBING' || this.state === 'DESCENDING') ? this.speed * 0.45 : this.speed;
+                let step = currentSpeed * dt;
+
+                // Anclaje algorítmico para evitar vibraciones en Time Warp altos
+                if (dist <= step || dist < 2) {
+                    this.mesh.position.copy(this.target); 
+                    this.advanceState();
+                } else {
+                    dir.normalize();
+                    this.mesh.position.add(dir.multiplyScalar(step));
+                }
+                
+                // Interrupción Dinámica: El tren está por cerrar puertas
+                if (!this.isOutbound && (this.state === 'WAITING' || this.state === 'WALKING_PLATFORM')) {
+                    let myTrain = trains.find(t => t.id === this.platform);
+                    if (myTrain && myTrain.state === 'BOARDING' && myTrain.timer > DOOR_WARNING) {
+                        this.state = 'BOARDING';
+                        this.target.set(myTrain.group.position.x + (Math.random()*400 - 200), 40, myTrain.zPos);
+                    }
+                }
+            }
+
+            // Máquina de estados finitos espaciales
+            advanceState() {
+                if (!this.isOutbound) {
+                    if (this.state === 'WALKING_TO_IN') {
+                        // Espera en el torniquete, manejado por el update global
+                    } else if (this.state === 'PROCESSED') {
+                        this.state = 'WALKING_STAIRS_BASE';
+                        this.target.set(250, 0, this.platform === 1 ? -160 : 160); 
+                    } else if (this.state === 'WALKING_STAIRS_BASE') {
+                        this.state = 'CLIMBING';
+                        this.target.set(350, 40, this.platform === 1 ? -160 : 160); 
+                    } else if (this.state === 'CLIMBING') {
+                        this.state = 'WALKING_PLATFORM';
+                        this.platformArrivalTime = simTimeElapsed; // Comienza a medirse al llegar al andén
+                        this.target.set((Math.random() * 600) - 300, 40, this.platform === 1 ? -160 : 160);
+                    } else if (this.state === 'WALKING_PLATFORM') {
+                        this.state = 'WAITING';
+                    } else if (this.state === 'BOARDING') {
+                        this.state = 'DONE';
+                        stats.boarded++;
+                        if (this.platformArrivalTime !== null) {
+                            const platformWait = Math.max(0, simTimeElapsed - this.platformArrivalTime);
+                            stats.platformWaitTotal += platformWait;
+                            stats.platformWaitCount++;
+                            stats.platformWaitMin = Math.min(stats.platformWaitMin, platformWait);
+                            stats.platformWaitMax = Math.max(stats.platformWaitMax, platformWait);
+                            stats.platformWaitLast = platformWait;
+                        }
+                    }
+                } else {
+                    if (this.state === 'DISEMBARKING') {
+                        this.state = 'WALKING_STAIRS_TOP';
+                        this.target.set(-350, 40, this.platform === 1 ? -160 : 160);
+                    } else if (this.state === 'WALKING_STAIRS_TOP') {
+                        this.state = 'DESCENDING';
+                        this.target.set(-250, 0, this.platform === 1 ? -160 : 160); 
+                    } else if (this.state === 'DESCENDING') {
+                        this.state = 'WALKING_TO_OUT';
+                        this.chooseTurnstile(turnstilesOut);
+                    } else if (this.state === 'PROCESSED') {
+                        this.state = 'EXITING';
+                        this.target.set(-250 - Math.random()*50, 0, 400); 
+                    } else if (this.state === 'EXITING') {
+                        this.state = 'DONE';
+                        stats.departures++;
+                    }
+                }
+            }
+        }
+
+        // ==========================================
+        // MOTOR PRINCIPAL DE ACTUALIZACIÓN
+        // ==========================================
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            
+            const realDt = clock.getDelta();
+            
+            if (!isPaused) {
+                // Modificador de Velocidad de Simulación
+                const dt = realDt * parseFloat(paramSpeed.value);
+                simTimeElapsed += dt;
+
+                // 1. Spawner Estocástico de Pasajeros (Distribución Exponencial)
+                if (simTimeElapsed >= nextPassengerArrivalTime) {
+                    passengers.push(new Passenger(false));
+                    stats.arrivals++;
+                    
+                    // Programar siguiente llegada
+                    let meanArrivalRate = parseFloat(paramArrival.value);
+                    nextPassengerArrivalTime = simTimeElapsed + getExponentialTime(meanArrivalRate);
+                }
+
+                // 2. Procesamiento Lógico en Torniquetes IN (Distribución Lognormal)
+                const meanTurnstile = parseFloat(paramTurnstile.value);
+                
+                turnstilesIn.forEach(t => {
+                    t.queue.forEach(pid => {
+                        let p = passengers.find(px => px.id === pid);
+                        if(p && p.state === 'WALKING_TO_IN') p.updateQueueTarget();
+                    });
+
+                    // Iniciar Validación
+                    if (t.processing === null && t.queue.length > 0) {
+                        let p = passengers.find(px => px.id === t.queue[0]);
+                        if (p && p.mesh.position.distanceTo(p.target) < 5) {
+                            t.queue.shift();
+                            t.processing = p;
+                            p.state = 'PROCESSING';
+                            p.mesh.position.set(t.pos.x, 0, t.pos.z); // Anclar al torniquete
+                            
+                            // APLICACIÓN LÓGICA ESTOCÁSTICA: Tiempo de validación Lognormal
+                            // Permite simular los bloqueos atípicos (tarjetas sin saldo)
+                            t.timer = getLognormalTime(meanTurnstile, 2.0); 
+                            
+                            // Cambio visual si el pasajero tarda más del promedio (Simulando error/demora)
+                            t.mesh.material = (t.timer > meanTurnstile + 1.5) ? errorMat : activeMat;
+                        }
+                    }
+
+                    // Avanzar Validación
+                    if (t.processing) {
+                        t.timer -= dt;
+                        if (t.timer <= 0) {
+                            t.processing.platform = Math.random() < 0.5 ? 1 : 2; // Distribución 50/50 a andenes
+                            t.processing.state = 'PROCESSED';
+                            t.processing.advanceState();
+                            t.processing = null;
+                            t.mesh.material = turnstileMatIn;
+                        }
+                    }
+                });
+
+                // 3. Procesamiento en Torniquetes OUT (Asumimos proceso rápido y determinístico)
+                turnstilesOut.forEach(t => {
+                    t.queue.forEach(pid => {
+                        let p = passengers.find(px => px.id === pid);
+                        if(p && p.state === 'WALKING_TO_OUT') p.updateQueueTarget();
+                    });
+
+                    if (t.processing === null && t.queue.length > 0) {
+                        let p = passengers.find(px => px.id === t.queue[0]);
+                        if (p && p.mesh.position.distanceTo(p.target) < 5) {
+                            t.queue.shift();
+                            t.processing = p;
+                            p.state = 'PROCESSING';
+                            p.mesh.position.set(t.pos.x, 0, t.pos.z);
+                            t.mesh.material = activeMat;
+                            t.timer = 1.0; // Salida rápida libre
+                        }
+                    }
+
+                    if (t.processing) {
+                        t.timer -= dt;
+                        if (t.timer <= 0) {
+                            t.processing.state = 'PROCESSED';
+                            t.processing.advanceState();
+                            t.processing = null;
+                            t.mesh.material = turnstileMatOut;
+                        }
+                    }
+                });
+
+                // 4. Actualización de Movimientos y Trenes
+                trains.forEach(t => t.update(dt));
+                
+                for (let i = passengers.length - 1; i >= 0; i--) {
+                    let p = passengers[i];
+                    if (p.state !== 'PROCESSING' && p.state !== 'DONE') {
+                        p.move(dt);
+                    }
+                    if (p.state === 'DONE') {
+                        scene.remove(p.mesh);
+                        passengers.splice(i, 1);
+                    }
+                }
+            } // Fin de isPaused
+
+            // 5. Renderizado final
+            updateLabels();
+            updateUI();
+            renderer.render(scene, camera);
+        }
+
+        // ==========================================
+        // PROYECCIÓN 3D A 2D PARA ETIQUETAS
+        // ==========================================
+        function updateLabels() {
+            const labelsData = [
+                { id: 'lbl-anden1', pos: new THREE.Vector3(0, 60, -160) },
+                { id: 'lbl-anden2', pos: new THREE.Vector3(0, 60, 160) },
+                { id: 'lbl-in', pos: new THREE.Vector3(140, 25, 280) },
+                { id: 'lbl-out', pos: new THREE.Vector3(-140, 25, 280) }
+            ];
+            
+            labelsData.forEach(data => {
+                const el = document.getElementById(data.id);
+                if(el) {
+                    const vec = data.pos.clone();
+                    vec.project(camera);
+                    // Mostrar solo si está delante de la cámara
+                    if(vec.z < 1) { 
+                        const x = (vec.x * .5 + .5) * window.innerWidth;
+                        const y = (vec.y * -.5 + .5) * window.innerHeight;
+                        // Efecto de escala según lejanía
+                        el.style.transform = `translate(-50%, -50%) scale(${Math.max(0.6, 1 - vec.z)})`;
+                        el.style.left = `${x}px`;
+                        el.style.top = `${y}px`;
+                        el.style.opacity = 1;
+                    } else {
+                        el.style.opacity = 0;
+                    }
+                }
+            });
+        }
+
+        // ==========================================
+        // ACTUALIZACIÓN DEL DASHBOARD HTML
+        // ==========================================
+        function updateUI() {
+            let totalSeconds = baseTime + simTimeElapsed;
+            let hrs = Math.floor(totalSeconds / 3600);
+            let mins = Math.floor((totalSeconds % 3600) / 60);
+            let secs = Math.floor(totalSeconds % 60);
+            uiTime.innerText = `${hrs.toString().padStart(2,'0')}:${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
+            
+            uiArrivals.innerText = stats.arrivals;
+            uiBoarded.innerText = stats.boarded;
+            uiRezagados.innerText = stats.rezagados;
+
+            // Indicadores de tiempo de espera en andén (solo pasajeros que ya abordaron)
+            const avgPlatformWait = stats.platformWaitCount > 0 ? stats.platformWaitTotal / stats.platformWaitCount : null;
+            uiPlatformAvg.innerText = avgPlatformWait === null ? '0.0 s' : `${avgPlatformWait.toFixed(1)} s`;
+            uiPlatformLast.innerText = stats.platformWaitLast === null ? '--' : `${stats.platformWaitLast.toFixed(1)} s`;
+            uiPlatformMin.innerText = stats.platformWaitCount === 0 ? '--' : `${stats.platformWaitMin.toFixed(1)} s`;
+            uiPlatformMax.innerText = stats.platformWaitCount === 0 ? '--' : `${stats.platformWaitMax.toFixed(1)} s`;
+            
+            // Cálculo del KPI
+            let rezPct = stats.arrivals > 0 ? ((stats.rezagados / stats.arrivals) * 100).toFixed(1) : 0;
+            uiRezagadosPct.innerText = `${rezPct}%`;
+            
+            // Pulso rojo si se excede la meta
+            const rezagadosPanel = uiRezagados.parentElement.parentElement;
+            if(parseFloat(rezPct) > 2.0) {
+                rezagadosPanel.classList.add('animate-pulse', 'border-rose-500');
+            } else {
+                rezagadosPanel.classList.remove('animate-pulse', 'border-rose-500');
+            }
+
+            let turnstileTotal = turnstilesIn.reduce((acc, t) => acc + t.queue.length + (t.processing ? 1 : 0), 0);
+            uiTurnstileQueue.innerText = turnstileTotal;
+
+            let platformTotal = passengers.filter(p => !p.isOutbound && ['WAITING','WALKING_PLATFORM','CLIMBING','WALKING_STAIRS_BASE'].includes(p.state)).length;
+            uiPlatformQueue.innerText = platformTotal;
+
+            // Actualizar Gráfica Histórica (Cada 15 segundos simulados para evitar sobrecarga)
+            if (simTimeElapsed - lastChartUpdateTime > 15) {
+                lastChartUpdateTime = simTimeElapsed;
+                
+                let timeLabel = `${hrs.toString().padStart(2,'0')}:${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
+                
+                if (historyChart) {
+                    historyChart.data.labels.push(timeLabel);
+                    historyChart.data.datasets[0].data.push(parseFloat(rezPct));
+                    
+                    // Mantener ventana de los últimos 60 datos (Sliding Window de ~15 minutos simulados)
+                    if (historyChart.data.labels.length > 60) {
+                        historyChart.data.labels.shift();
+                        historyChart.data.datasets[0].data.shift();
+                    }
+                    historyChart.update();
+                }
+            }
+        }
+    </script>
+</body>
+</html>
