@@ -368,6 +368,18 @@
             isPaused = false;
         });
 
+        // BOTÓN FINALIZAR Y VER RESULTADOS
+        document.getElementById('btn-finish').addEventListener('click', () => {
+            isPaused = true;
+            showAnalyticsPage(true);
+        });
+
+        // BOTÓN PARA REGRESAR A LA SIMULACIÓN
+        document.getElementById('btn-back-sim').addEventListener('click', () => {
+            hideAnalyticsPage();
+        });
+
+
         // Ayuda de controles: aparece abajo y centrada al mover/tocar,
         // y se oculta tras cinco segundos sin actividad. El cursor nunca se oculta.
         
