@@ -351,14 +351,26 @@
         paramSpeed.addEventListener('input', e => document.getElementById('val-speed').innerText = 'x' + e.target.value);
         
         let isPaused = false;
-        document.getElementById('btn-play').addEventListener('click', () => { isPaused = false; });
-        document.getElementById('btn-pause').addEventListener('click', () => { isPaused = true; });
-        document.getElementById('btn-reset').addEventListener('click', () => { resetSimulation(); isPaused = false; });
-        document.getElementById('btn-finish').addEventListener('click', () => showAnalyticsPage(true));
-        document.getElementById('btn-back-sim').addEventListener('click', hideAnalyticsPage);
+        
+        const playButton = document.getElementById('btn-play');
+        
+        playButton.addEventListener('click', () => {
+            if (!simulationFinished) {
+                isPaused = false;
+            }
+        });
+
+        document.getElementById('btn-pause').addEventListener('click', () => {
+            isPaused = true;
+        });
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            resetSimulation();
+            isPaused = false;
+        });
 
         // Ayuda de controles: aparece abajo y centrada al mover/tocar,
         // y se oculta tras cinco segundos sin actividad. El cursor nunca se oculta.
+        
         let instructionsHideTimer = null;
         function showControlInstructions() {
             const instructions = document.getElementById('instructions');
@@ -389,6 +401,12 @@
         // Reloj y Variables de Estado
         let simTimeElapsed = 0;
         let baseTime = 6 * 3600 + 30 * 60; // Inicia 06:30:00 a.m.
+        
+        // HORARIO DE LA SIMULACIÓN
+        const SIM_END_TIME = 8 * 3600 + 30 * 60; // Finaliza 08:30:00 a.m.
+        const SIM_DURATION = SIM_END_TIME - baseTime; // Duración: 2 horas simuladas
+        
+        let simulationFinished = false;
         
         // Controladores de eventos y gráficas
         let nextPassengerArrivalTime = 0; 
@@ -727,6 +745,13 @@
         // ==========================================
         function resetSimulation() {
             simTimeElapsed = 0;
+            
+            simulationFinished = false;
+            isPaused = false;
+            
+            playButton.disabled = false;
+            playButton.textContent = '▶ Play';
+            playButton.classList.remove('opacity-50', 'cursor-not-allowed');
             stats = { arrivals: 0, departures: 0, boarded: 0, rezagados: 0, waitingTracker: new Set(), platformWaitTotal: 0, platformWaitCount: 0, platformWaitMin: Infinity, platformWaitMax: 0, platformWaitLast: null };
             
             // Disparador inicial Lognormal/Exponencial
@@ -1053,8 +1078,15 @@
             const realDt = clock.getDelta();
             
             if (!isPaused) {
-                // Modificador de Velocidad de Simulación
-                const dt = realDt * parseFloat(paramSpeed.value);
+                // Modificador de velocidad de simulación
+                // Evita que el reloj supere las 08:30:00 a.m.
+                const remainingTime = Math.max(0, SIM_DURATION - simTimeElapsed);
+                
+                const dt = Math.min(
+                    realDt * parseFloat(paramSpeed.value),
+                    remainingTime
+                );
+                
                 simTimeElapsed += dt;
 
                 // 1. Spawner Estocástico de Pasajeros (Distribución Exponencial)
@@ -1149,6 +1181,23 @@
                         scene.remove(p.mesh);
                         passengers.splice(i, 1);
                     }
+                }
+
+                // FINALIZACIÓN AUTOMÁTICA A LAS 08:30 A.M.
+                if (simTimeElapsed >= SIM_DURATION) {
+                    
+                    simTimeElapsed = SIM_DURATION;
+                    
+                    isPaused = true;
+                    simulationFinished = true;
+                    
+                    playButton.disabled = true;
+                    playButton.textContent = '✓ Finalizada';
+                    
+                    playButton.classList.add(
+                        'opacity-50',
+                        'cursor-not-allowed'
+                    );
                 }
             } // Fin de isPaused
 
