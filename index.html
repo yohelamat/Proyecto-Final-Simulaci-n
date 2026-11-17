@@ -219,6 +219,15 @@
 
             <div class="control-group">
                 <label class="text-xs text-slate-300 flex justify-between font-medium">
+                    <span>Capacidad de pasajeros por tren</span>
+                    <span id="val-train-capacity" class="text-fuchsia-400 font-mono">40 pasajeros</span>
+                </label>
+                <input type="range" id="param-train-capacity" class="slider" min="10" max="300" step="5" value="40">
+                <p class="text-[10px] text-slate-500 mt-1">Capacidad supuesta y editable para experimentar.</p>
+            </div>
+
+            <div class="control-group">
+                <label class="text-xs text-slate-300 flex justify-between font-medium">
                     <span>Headway Tren (Fijo)</span>
                     <span id="val-headway" class="text-blue-400 font-mono">90s</span>
                 </label>
@@ -392,12 +401,48 @@
                         <p id="a-param-dwell" class="text-2xl font-bold text-purple-300">--</p>
                     </div>
                     <div>
-                        <p class="stat-label">Aceleración</p>
+                        <p class="stat-label">Aceleración visual</p>
                         <p id="a-param-speed" class="text-2xl font-bold text-white">--</p>
+                    </div>
+                    <div>
+                        <p class="stat-label">Torniquetes de entrada activos</p>
+                        <p id="a-param-active-ts" class="text-2xl font-bold text-indigo-300">--</p>
+                    </div>
+                    <div>
+                        <p class="stat-label">Capacidad supuesta por tren</p>
+                        <p id="a-param-train-capacity" class="text-2xl font-bold text-fuchsia-300">--</p>
+                    </div>
+                    <div>
+                        <p class="stat-label">Tasa de llegada (λ)</p>
+                        <p id="a-param-lambda" class="text-2xl font-bold text-emerald-300">--</p>
+                    </div>
+                    <div>
+                        <p class="stat-label">Capacidad teórica de torniquetes</p>
+                        <p id="a-param-ts-capacity" class="text-2xl font-bold text-amber-300">--</p>
                     </div>
                 </div>
             </div>
-            <p class="text-center text-xs text-slate-500 pb-6">Resultados generados a partir de los eventos registrados durante la simulación.</p>
+
+            <div class="analytics-card">
+                <h3 class="text-lg font-bold text-cyan-300 mb-2">Comparación de escenarios</h3>
+                <p class="text-sm text-slate-400 mb-4">Guarda una ejecución como escenario A, modifica los parámetros, reinicia y ejecuta otra simulación para guardarla como escenario B.</p>
+                <div class="flex flex-wrap gap-3 mb-3">
+                    <button id="btn-save-scenario-a" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold">Guardar resultado como A</button>
+                    <button id="btn-save-scenario-b" class="px-4 py-2 rounded-lg bg-fuchsia-700 hover:bg-fuchsia-600 text-white text-sm font-bold">Guardar resultado como B</button>
+                </div>
+                <p id="scenario-status" class="text-xs text-slate-400 mb-4">Aún no se han guardado escenarios.</p>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left">
+                        <thead class="text-slate-300 border-b border-slate-600">
+                            <tr><th class="py-2 pr-4">Indicador</th><th class="py-2 px-3">Escenario A</th><th class="py-2 px-3">Escenario B</th><th class="py-2 px-3">Diferencia B − A</th></tr>
+                        </thead>
+                        <tbody id="scenario-comparison-body" class="divide-y divide-slate-700">
+                            <tr><td colspan="4" class="py-3 text-slate-500">Guarda los resultados de A y B para compararlos.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <p class="text-center text-xs text-slate-500 pb-6">Los resultados dependen de los parámetros y de la variabilidad aleatoria del modelo. La capacidad del tren es un supuesto editable y debe contrastarse con datos reales antes de formular recomendaciones operativas.</p>
         </main>
     </section>
 
@@ -455,6 +500,7 @@
         const paramArrival = document.getElementById('param-arrival');
         const paramTurnstile = document.getElementById('param-turnstile');
         const paramActiveTs = document.getElementById('param-active-ts');
+        const paramTrainCapacity = document.getElementById('param-train-capacity');
         const paramHeadway = document.getElementById('param-headway');
         const paramDwell = document.getElementById('param-dwell');
         const paramSpeed = document.getElementById('param-speed');
@@ -496,6 +542,9 @@
             updateMathRates();
         });
         
+        paramTrainCapacity.addEventListener('input', e => {
+            document.getElementById('val-train-capacity').innerText = e.target.value + ' pasajeros';
+        });
         paramHeadway.addEventListener('input', e => document.getElementById('val-headway').innerText = e.target.value + 's');
         paramDwell.addEventListener('input', e => document.getElementById('val-dwell').innerText = e.target.value + 's');
         paramSpeed.addEventListener('input', e => document.getElementById('val-speed').innerText = 'x' + e.target.value);
@@ -583,8 +632,10 @@
         let analyticsSaturationChart = null;
         let analyticsWaitChart = null;
         let waitHistory = [];
+        let scenarioA = null;
+        let scenarioB = null;
         
-        let stats = { arrivals: 0, departures: 0, boarded: 0, rezagados: 0, waitingTracker: new Set(), platformWaitTotal: 0, platformWaitCount: 0, platformWaitMin: Infinity, platformWaitMax: 0, platformWaitLast: null };
+        let stats = { arrivals: 0, departures: 0, boarded: 0, rezagados: 0, missedTrainEvents: 0, waitingTracker: new Set(), platformWaitTotal: 0, platformWaitCount: 0, platformWaitMin: Infinity, platformWaitMax: 0, platformWaitLast: null };
 
         // Parámetro de advertencia de puertas
         const DOOR_WARNING = 3;
@@ -867,7 +918,7 @@
             playButton.textContent = '▶ Play';
             playButton.classList.remove('opacity-50', 'cursor-not-allowed');
             
-            stats = { arrivals: 0, departures: 0, boarded: 0, rezagados: 0, waitingTracker: new Set(), platformWaitTotal: 0, platformWaitCount: 0, platformWaitMin: Infinity, platformWaitMax: 0, platformWaitLast: null };
+            stats = { arrivals: 0, departures: 0, boarded: 0, rezagados: 0, missedTrainEvents: 0, waitingTracker: new Set(), platformWaitTotal: 0, platformWaitCount: 0, platformWaitMin: Infinity, platformWaitMax: 0, platformWaitLast: null };
             
             // Disparador inicial Lognormal/Exponencial
             nextPassengerArrivalTime = getExponentialTime(parseFloat(paramArrival.value));
@@ -907,7 +958,7 @@
             // AHORA TENEMOS 9 TORNIQUETES DE ENTRADA EN EL 3D
             for(let i=0; i<9; i++) {
                 let mesh = new THREE.Mesh(turnstileGeo, turnstileMatIn);
-                mesh.position.set(20 + (i*25), 6, 280);
+                mesh.position.set(150 + (i*25), 6, 280);
                 mesh.castShadow = true;
                 scene.add(mesh);
                 turnstilesIn.push({ id: `IN_${i}`, pos: mesh.position, queue: [], processing: null, timer: 0, mesh: mesh });
@@ -916,7 +967,7 @@
             // Recursos: Torniquetes de SALIDA (Mapeados a la izquierda)
             for(let i=0; i<9; i++) {
                 let mesh = new THREE.Mesh(turnstileGeo, turnstileMatOut);
-                mesh.position.set(-205 + (i*25), 6, 280);
+                mesh.position.set(-350 + (i*25), 6, 280);
                 mesh.castShadow = true;
                 scene.add(mesh);
                 turnstilesOut.push({ id: `OUT_${i}`, pos: mesh.position, queue: [], processing: null, timer: 0, mesh: mesh });
@@ -939,6 +990,7 @@
                 
                 // Headway fijo (Determinístico)
                 this.timer = parseFloat(paramHeadway.value) + (id === 2 ? parseFloat(paramHeadway.value)/2 : 0);
+                this.boardedThisStop = 0;
                 
                 this.group = new THREE.Group();
                 this.group.visible = false; 
@@ -1006,6 +1058,7 @@
                         this.group.position.x = 0;
                         this.state = 'BOARDING';
                         this.timer = parseFloat(paramDwell.value); // Dwell Time ajustable desde UI
+                        this.boardedThisStop = 0;
                         
                         // Generar pasajeros de desembarque (Eventos exógenos)
                         let numAlighting = Math.floor(Math.random() * 15) + 10;
@@ -1024,9 +1077,10 @@
                         
                         passengers.forEach(p => {
                             if (!p.isOutbound && p.platform === this.id && (p.state === 'WAITING' || p.state === 'WALKING_PLATFORM')) {
+                                stats.missedTrainEvents++;
                                 if (!stats.waitingTracker.has(p.id)) {
                                     stats.rezagados++;
-                                    stats.waitingTracker.add(p.id); // Solo se cuenta una vez por pasajero
+                                    stats.waitingTracker.add(p.id); // Personas únicas que perdieron al menos un tren
                                 }
                             }
                         });
@@ -1052,6 +1106,7 @@
                 this.speed = 45 + Math.random() * 25; 
                 this.platform = platformId;
                 this.platformArrivalTime = null; // Inicio del cronómetro de espera en el andén
+                this.boardingReserved = false;
 
                 // Visuales
                 const color = isOutbound ? 0xfbbf24 : new THREE.Color(`hsl(${Math.random()*360}, 75%, 55%)`);
@@ -1131,7 +1186,10 @@
                 // Interrupción Dinámica: El tren está por cerrar puertas
                 if (!this.isOutbound && (this.state === 'WAITING' || this.state === 'WALKING_PLATFORM')) {
                     let myTrain = trains.find(t => t.id === this.platform);
-                    if (myTrain && myTrain.state === 'BOARDING' && myTrain.timer > DOOR_WARNING) {
+                    if (myTrain && myTrain.state === 'BOARDING' && myTrain.timer > DOOR_WARNING &&
+                        myTrain.boardedThisStop < parseInt(paramTrainCapacity.value) && !this.boardingReserved) {
+                        myTrain.boardedThisStop++;
+                        this.boardingReserved = true;
                         this.state = 'BOARDING';
                         this.target.set(myTrain.group.position.x + (Math.random()*400 - 200), 40, myTrain.zPos);
                     }
@@ -1344,8 +1402,8 @@
             const labelsData = [
                 { id: 'lbl-anden1', pos: new THREE.Vector3(0, 60, -160) },
                 { id: 'lbl-anden2', pos: new THREE.Vector3(0, 60, 160) },
-                { id: 'lbl-in', pos: new THREE.Vector3(140, 25, 280) },
-                { id: 'lbl-out', pos: new THREE.Vector3(-140, 25, 280) }
+                { id: 'lbl-in', pos: new THREE.Vector3(250, 25, 280) },
+                { id: 'lbl-out', pos: new THREE.Vector3(-250, 25, 280) }
             ];
             
             labelsData.forEach(data => {
@@ -1498,7 +1556,71 @@
             document.getElementById('analytics-page').classList.remove('active');
         }
 
+        function captureScenario() {
+            const avgWait = stats.platformWaitCount > 0 ? stats.platformWaitTotal / stats.platformWaitCount : 0;
+            return {
+                arrivals: stats.arrivals,
+                boarded: stats.boarded,
+                pending: Math.max(0, stats.arrivals - stats.boarded),
+                rezagados: stats.rezagados,
+                missedTrainEvents: stats.missedTrainEvents,
+                latePct: stats.arrivals > 0 ? (stats.rezagados / stats.arrivals) * 100 : 0,
+                avgWait,
+                params: {
+                    arrival: parseFloat(paramArrival.value),
+                    validation: parseFloat(paramTurnstile.value),
+                    activeTurnstiles: parseInt(paramActiveTs.value),
+                    trainCapacity: parseInt(paramTrainCapacity.value),
+                    headway: parseInt(paramHeadway.value),
+                    dwell: parseInt(paramDwell.value),
+                    speed: parseInt(paramSpeed.value)
+                }
+            };
+        }
+
+        function renderScenarioComparison() {
+            const status = document.getElementById('scenario-status');
+            const body = document.getElementById('scenario-comparison-body');
+            const saved = [];
+            if (scenarioA) saved.push('A');
+            if (scenarioB) saved.push('B');
+            status.textContent = saved.length ? `Escenario${saved.length > 1 ? 's' : ''} ${saved.join(' y ')} guardado${saved.length > 1 ? 's' : ''}.` : 'Aún no se han guardado escenarios.';
+            const rows = [
+                ['Ingresos', 'arrivals', 0, ''],
+                ['Abordajes', 'boarded', 0, ''],
+                ['Pendientes al finalizar', 'pending', 0, ''],
+                ['Personas únicas que perdieron un tren', 'rezagados', 0, ''],
+                ['Eventos de tren perdido', 'missedTrainEvents', 0, ''],
+                ['Porcentaje de personas retrasadas', 'latePct', 1, '%'],
+                ['Espera promedio en andén (s)', 'avgWait', 1, ' s']
+            ];
+            body.innerHTML = '';
+            if (!scenarioA && !scenarioB) {
+                body.innerHTML = '<tr><td colspan="4" class="py-3 text-slate-500">Guarda los resultados de A y B para compararlos.</td></tr>';
+                return;
+            }
+            rows.forEach(([label, key, decimals, suffix]) => {
+                const a = scenarioA ? scenarioA[key] : null;
+                const b = scenarioB ? scenarioB[key] : null;
+                const fmt = v => v === null ? '—' : `${Number(v).toFixed(decimals)}${suffix}`;
+                const diff = a !== null && b !== null ? `${b - a >= 0 ? '+' : ''}${(b - a).toFixed(decimals)}${suffix}` : '—';
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td class="py-2 pr-4 text-slate-200">${label}</td><td class="py-2 px-3">${fmt(a)}</td><td class="py-2 px-3">${fmt(b)}</td><td class="py-2 px-3">${diff}</td>`;
+                body.appendChild(tr);
+            });
+        }
+
+        document.getElementById('btn-save-scenario-a').addEventListener('click', () => {
+            scenarioA = captureScenario();
+            renderScenarioComparison();
+        });
+        document.getElementById('btn-save-scenario-b').addEventListener('click', () => {
+            scenarioB = captureScenario();
+            renderScenarioComparison();
+        });
+
         function updateAnalyticsDashboard() {
+            renderScenarioComparison();
             const totalSeconds = baseTime + simTimeElapsed;
 
             const hrs = Math.floor(totalSeconds / 3600);
@@ -1558,7 +1680,11 @@
                 'a-param-turnstile': `${parseFloat(paramTurnstile.value).toFixed(1)} s`,
                 'a-param-headway': `${paramHeadway.value} s`,
                 'a-param-dwell': `${paramDwell.value} s`,
-                'a-param-speed': `x${paramSpeed.value}`
+                'a-param-speed': `x${paramSpeed.value}`,
+                'a-param-active-ts': `${paramActiveTs.value} torniquetes`,
+                'a-param-train-capacity': `${paramTrainCapacity.value} pasajeros`,
+                'a-param-lambda': `${(60 / parseFloat(paramArrival.value)).toFixed(1)} pax/min`,
+                'a-param-ts-capacity': `${((60 / parseFloat(paramTurnstile.value)) * parseInt(paramActiveTs.value)).toFixed(1)} pax/min`
             };
 
             Object.entries(values).forEach(([id, value]) => {
