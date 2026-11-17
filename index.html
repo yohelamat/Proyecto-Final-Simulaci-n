@@ -82,32 +82,42 @@
             <p class="text-xs text-slate-400 mt-1.5 leading-relaxed">Simulación SED - Estación Villa Zaita<br>Línea 1 Metro de Panamá</p>
         </div>
 
-        <!-- Dashboard Estadístico -->
+        <!-- Dashboard Estadístico (Ecuación de Conservación) -->
         <div class="grid grid-cols-2 gap-3 mb-6">
             <div class="stat-card col-span-2 text-center bg-slate-800/90 border-slate-600">
                 <span class="stat-label">Reloj de Simulación (Hora Pico)</span>
                 <span class="stat-value text-white text-2xl tracking-widest font-mono" id="ui-time">06:30:00</span>
             </div>
-            <div class="stat-card">
-                <span class="stat-label">Ingresos</span>
-                <span class="stat-value text-emerald-400" id="ui-arrivals">0</span>
+            
+            <div class="col-span-2 mt-2">
+                <span class="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Ecuación de Conservación</span>
+            </div>
+            
+            <div class="stat-card col-span-2 bg-emerald-950/30 border-emerald-800/50">
+                <span class="stat-label text-emerald-300">Total Ingresados al Sistema</span>
+                <span class="stat-value text-emerald-400 text-2xl" id="ui-arrivals">0</span>
             </div>
             <div class="stat-card">
-                <span class="stat-label">Abordajes</span>
+                <span class="stat-label">= Abordados</span>
                 <span class="stat-value text-indigo-400" id="ui-boarded">0</span>
             </div>
             <div class="stat-card">
-                <span class="stat-label">Fila Torniquete</span>
+                <span class="stat-label">+ En Torniquetes</span>
                 <span class="stat-value text-amber-400" id="ui-turnstile-queue">0</span>
             </div>
             <div class="stat-card">
-                <span class="stat-label">Fila Andenes</span>
+                <span class="stat-label">+ En Tránsito</span>
+                <span class="stat-value text-purple-400" id="ui-transit">0</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">+ En Andén</span>
                 <span class="stat-value text-blue-400" id="ui-platform-queue">0</span>
             </div>
+
             <!-- KPI Crítico: Rezagados -->
-            <div class="stat-card col-span-2 border-rose-500/30 bg-rose-950/40 relative overflow-hidden">
+            <div class="stat-card col-span-2 border-rose-500/30 bg-rose-950/40 relative overflow-hidden mt-2">
                 <div class="absolute top-0 right-0 w-16 h-16 bg-rose-500/10 rounded-bl-full -mr-8 -mt-8"></div>
-                <span class="stat-label text-rose-300">Saturación: Rezagados</span>
+                <span class="stat-label text-rose-300">Saturación: Rezagados (Esperan otro tren)</span>
                 <div class="flex justify-between items-baseline">
                     <span class="stat-value text-rose-400 text-3xl" id="ui-rezagados">0</span>
                     <span class="text-sm font-bold text-rose-300 bg-rose-900/50 px-2 py-1 rounded" id="ui-rezagados-pct">0.0%</span>
@@ -129,24 +139,30 @@
 
     <!-- UI Overlay Derecho (Controles y Gráfica) -->
     <div id="ui-panel-right" class="p-5 shadow-2xl">
-        <!-- Modelo Matemático Activo -->
+        
+        <!-- Modelo Matemático Activo (Cálculo de Tasas) -->
         <div class="mb-5 p-3 bg-slate-800/50 border border-slate-700/50 rounded-lg">
-            <h4 class="text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-2 border-b border-slate-700 pb-1">Motor Estocástico Activo</h4>
+            <h4 class="text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-2 border-b border-slate-700 pb-1">Análisis Teoría de Colas (M/G/c)</h4>
             <div class="flex justify-between items-center text-[10px] text-slate-400 mb-1">
-                <span>Llegadas:</span> <span class="text-emerald-400 font-mono">Exponencial (λ)</span>
+                <span>Demanda (λ):</span> 
+                <span class="text-emerald-400 font-mono font-bold" id="ui-lambda-rate">50.0 pax/min</span>
             </div>
-            <div class="flex justify-between items-center text-[10px] text-slate-400">
-                <span>Torniquetes:</span> <span class="text-amber-400 font-mono">Lognormal (μ, σ)</span>
+            <div class="flex justify-between items-center text-[10px] text-slate-400 mb-1">
+                <span>Servicio Base (μ):</span> 
+                <span class="text-amber-400 font-mono font-bold" id="ui-mu-rate">20.0 pax/min</span>
+            </div>
+            <div class="flex justify-between items-center text-[10px] text-slate-400 pt-1 border-t border-slate-700 mt-1">
+                <span>Capacidad Total (c×μ):</span> 
+                <span class="text-indigo-400 font-mono font-bold" id="ui-capacity-rate">180.0 pax/min</span>
             </div>
         </div>
 
         <!-- Aporte: criterio de variabilidad y plan de observación -->
         <details class="mb-5 p-3 bg-slate-800/50 border border-amber-500/30 rounded-lg">
-            <summary class="cursor-pointer text-[10px] font-bold text-amber-300 uppercase tracking-wider">Criterio del tiempo de validación</summary>
+            <summary class="cursor-pointer text-[10px] font-bold text-amber-300 uppercase tracking-wider">Criterio estadístico</summary>
             <div class="mt-3 space-y-2 text-[10px] leading-relaxed text-slate-300">
                 <p>El código actual usa una distribución Lognormal para representar validaciones que suelen ser breves y algunas que tardan más; por ahora es un supuesto, no un resultado de mediciones reales.</p>
                 <p>Si aún no se cuenta con datos, la retroalimentación de la profesora propone usar una distribución Triangular (2,3,6). Con al menos 30 observaciones se puede revisar si los datos justifican la Lognormal y ajustar sus parámetros μ y σ.</p>
-                <p>En la muestra se propone registrar la duración y situaciones que puedan influir, como usuarios frecuentes u ocasionales, adultos mayores, niños o pasajeros con equipaje.</p>
             </div>
         </details>
 
@@ -178,7 +194,7 @@
         <div class="flex-1">
             <div class="control-group">
                 <label class="text-xs text-slate-300 flex justify-between font-medium">
-                    <span>Llegada Promedio (λ)</span>
+                    <span>Llegada Promedio (1/λ)</span>
                     <span id="val-arrival" class="text-emerald-400 font-mono">1.2s</span>
                 </label>
                 <input type="range" id="param-arrival" class="slider" min="0.2" max="5" step="0.1" value="1.2">
@@ -186,10 +202,19 @@
 
             <div class="control-group">
                 <label class="text-xs text-slate-300 flex justify-between font-medium">
-                    <span>Validación Media (μ)</span>
+                    <span>Validación Media (1/μ)</span>
                     <span id="val-turnstile" class="text-amber-400 font-mono">3.0s</span>
                 </label>
                 <input type="range" id="param-turnstile" class="slider" min="1" max="8" step="0.5" value="3.0">
+            </div>
+
+            <!-- Nuevo Slider: Cantidad de Torniquetes Activos (c) -->
+            <div class="control-group">
+                <label class="text-xs text-slate-300 flex justify-between font-medium">
+                    <span>Torniquetes de Entrada Activos (c)</span>
+                    <span id="val-active-ts" class="text-indigo-400 font-mono">9</span>
+                </label>
+                <input type="range" id="param-active-ts" class="slider" min="1" max="9" step="1" value="9">
             </div>
 
             <div class="control-group">
@@ -200,7 +225,6 @@
                 <input type="range" id="param-headway" class="slider" min="45" max="300" step="5" value="90">
             </div>
             
-            <!-- Nuevo Control: Dwell Time -->
             <div class="control-group">
                 <label class="text-xs text-slate-300 flex justify-between font-medium">
                     <span>Dwell Time (Parada)</span>
@@ -219,26 +243,19 @@
 
             <!-- Botones de Control de la Simulación -->
             <div class="mt-8 pb-2 flex gap-2">
-                <button id="btn-play"
-                    class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded transition-colors shadow-lg">
+                <button id="btn-play" class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded transition-colors shadow-lg">
                     ▶ Play
                 </button>
-                
-                <button id="btn-pause"
-                    class="flex-1 py-2 bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold rounded transition-colors shadow-lg">
+                <button id="btn-pause" class="flex-1 py-2 bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold rounded transition-colors shadow-lg">
                     ⏸ Pausa
                 </button>
-                
-                <button id="btn-reset"
-                    class="flex-1 py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold rounded transition-colors shadow-lg">
+                <button id="btn-reset" class="flex-1 py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold rounded transition-colors shadow-lg">
                     🔄 Reset
-                
                 </button>
             </div>
             
             <!-- Botón independiente para ver resultados -->
-            <button id="btn-finish"
-                class="w-full mt-3 mb-4 py-3 bg-cyan-700 hover:bg-cyan-600 text-white text-sm font-bold rounded-lg transition-colors shadow-lg">
+            <button id="btn-finish" class="w-full mt-3 mb-4 py-3 bg-cyan-700 hover:bg-cyan-600 text-white text-sm font-bold rounded-lg transition-colors shadow-lg">
                 ■ Finalizar y ver resultados
             </button>
         </div>
@@ -248,192 +265,141 @@
         🖱️ <b>Botón izquierdo:</b> Rotar<br><b>Botón derecho:</b> Desplazar (Pan)<br><b>Botón central:</b> Zoom
     </div>
 
-<!-- PANTALLA COMPLETA DE RESULTADOS -->
-<section id="analytics-page">
-
-    <header class="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-3 px-6 py-5 bg-slate-900 border-b border-slate-700 shadow-xl">
-        <div>
-            <p class="text-sm uppercase tracking-widest text-cyan-400 font-bold">
-                DIGITAL TWIN · VILLA ZAITA
-            </p>
-            <h2 class="text-2xl md:text-3xl font-bold text-white">
-                Resultados de la simulación
-            </h2>
-            <p id="analytics-status" class="text-sm text-slate-400 mt-1">
-                Resumen de la hora pico
-            </p>
-        </div>
-
-        <button id="btn-back-sim"
-            class="px-5 py-3 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-sm font-bold">
-            ← Volver a simulación
-        </button>
-    </header>
-
-    <main class="max-w-screen-2xl mx-auto p-5 md:p-8 space-y-8">
-
-        <!-- INDICADORES PRINCIPALES -->
-        <div>
-            <h3 class="text-lg font-bold text-cyan-300 mb-4">
-                Indicadores generales
-            </h3>
-
-            <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-
-                <div class="analytics-card">
-                    <p class="stat-label">Tiempo simulado</p>
-                    <p id="a-time" class="text-3xl font-bold text-white font-mono">06:30:00</p>
-                </div>
-
-                <div class="analytics-card">
-                    <p class="stat-label">Ingresos</p>
-                    <p id="a-arrivals" class="text-4xl font-bold text-emerald-400">0</p>
-                    <p class="text-xs text-slate-400">Pasajeros ingresados</p>
-                </div>
-
-                <div class="analytics-card">
-                    <p class="stat-label">Abordajes</p>
-                    <p id="a-boarded" class="text-4xl font-bold text-indigo-400">0</p>
-                    <p class="text-xs text-slate-400">Pasajeros que abordaron</p>
-                </div>
-
-                <div class="analytics-card">
-                    <p class="stat-label">Pasajeros rezagados</p>
-                    <p id="a-late" class="text-4xl font-bold text-rose-400">0</p>
-                    <p class="text-xs text-slate-400">Pasajeros que esperan otro tren</p>
-                </div>
-
-                <div class="analytics-card">
-                    <p class="stat-label">Porcentaje de rezagados</p>
-                    <p id="a-percent" class="text-4xl font-bold text-rose-300">0.0%</p>
-                </div>
-
-                <div class="analytics-card">
-                    <p class="stat-label">Fila de torniquetes</p>
-                    <p id="a-turnstile" class="text-4xl font-bold text-amber-300">0</p>
-                </div>
-
-                <div class="analytics-card">
-                    <p class="stat-label">Personas en andenes</p>
-                    <p id="a-platform" class="text-4xl font-bold text-blue-300">0</p>
-                </div>
-
-                <div class="analytics-card">
-                    <p class="stat-label">Tiempo promedio de espera</p>
-                    <p id="a-wait" class="text-4xl font-bold text-cyan-300">0.0 s</p>
-                </div>
-
+    <!-- PANTALLA COMPLETA DE RESULTADOS -->
+    <section id="analytics-page">
+        <header class="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-3 px-6 py-5 bg-slate-900 border-b border-slate-700 shadow-xl">
+            <div>
+                <p class="text-sm uppercase tracking-widest text-cyan-400 font-bold">
+                    DIGITAL TWIN · VILLA ZAITA
+                </p>
+                <h2 class="text-2xl md:text-3xl font-bold text-white">
+                    Resultados de la simulación
+                </h2>
+                <p id="analytics-status" class="text-sm text-slate-400 mt-1">
+                    Resumen de la hora pico
+                </p>
             </div>
-        </div>
+            <button id="btn-back-sim" class="px-5 py-3 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-sm font-bold">
+                ← Volver a simulación
+            </button>
+        </header>
 
-        <!-- TIEMPOS DE ESPERA -->
-        <div>
-            <h3 class="text-lg font-bold text-cyan-300 mb-4">
-                Análisis de tiempos de espera
-            </h3>
-
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-
-                <div class="analytics-card">
-                    <p class="stat-label">Último tiempo registrado</p>
-                    <p id="a-last" class="text-3xl font-bold text-indigo-300">--</p>
-                </div>
-
-                <div class="analytics-card">
-                    <p class="stat-label">Tiempo mínimo</p>
-                    <p id="a-min" class="text-3xl font-bold text-emerald-300">--</p>
-                </div>
-
-                <div class="analytics-card">
-                    <p class="stat-label">Tiempo máximo</p>
-                    <p id="a-max" class="text-3xl font-bold text-amber-300">--</p>
-                </div>
-
-                <div class="analytics-card">
-                    <p class="stat-label">Total de esperas registradas</p>
-                    <p id="a-wait-count" class="text-3xl font-bold text-cyan-300">0</p>
-                </div>
-
-            </div>
-        </div>
-
-        <!-- GRÁFICAS -->
-        <div>
-            <h3 class="text-lg font-bold text-cyan-300 mb-4">
-                Comportamiento de la simulación
-            </h3>
-
-            <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-
-                <div class="analytics-card">
-                    <h3 class="text-lg font-bold text-white mb-2">
-                        Histórico de saturación
-                    </h3>
-                    <p class="text-sm text-slate-400 mb-4">
-                        Porcentaje acumulado de pasajeros rezagados.
-                    </p>
-                    <div class="analytics-chart">
-                        <canvas id="analyticsSaturationChart"></canvas>
+        <main class="max-w-screen-2xl mx-auto p-5 md:p-8 space-y-8">
+            <!-- INDICADORES PRINCIPALES -->
+            <div>
+                <h3 class="text-lg font-bold text-cyan-300 mb-4">Indicadores generales</h3>
+                <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                    <div class="analytics-card">
+                        <p class="stat-label">Hora que se detuvo la simulación</p>
+                        <p id="a-time" class="text-3xl font-bold text-white font-mono">06:30:00</p>
+                    </div>
+                    <div class="analytics-card">
+                        <p class="stat-label">Ingresos</p>
+                        <p id="a-arrivals" class="text-4xl font-bold text-emerald-400">0</p>
+                        <p class="text-xs text-slate-400">Pasajeros ingresados</p>
+                    </div>
+                    <div class="analytics-card">
+                        <p class="stat-label">Abordajes</p>
+                        <p id="a-boarded" class="text-4xl font-bold text-indigo-400">0</p>
+                        <p class="text-xs text-slate-400">Pasajeros que abordaron</p>
+                    </div>
+                    <div class="analytics-card">
+                        <p class="stat-label">Pasajeros rezagados</p>
+                        <p id="a-late" class="text-4xl font-bold text-rose-400">0</p>
+                        <p class="text-xs text-slate-400">Pasajeros que esperan otro tren</p>
+                    </div>
+                    <div class="analytics-card">
+                        <p class="stat-label">Porcentaje de rezagados</p>
+                        <p id="a-percent" class="text-4xl font-bold text-rose-300">0.0%</p>
+                    </div>
+                    <div class="analytics-card">
+                        <p class="stat-label">Fila de torniquetes</p>
+                        <p id="a-turnstile" class="text-4xl font-bold text-amber-300">0</p>
+                    </div>
+                    <div class="analytics-card">
+                        <p class="stat-label">Personas en andenes</p>
+                        <p id="a-platform" class="text-4xl font-bold text-blue-300">0</p>
+                    </div>
+                    <div class="analytics-card">
+                        <p class="stat-label">Tiempo promedio de espera</p>
+                        <p id="a-wait" class="text-4xl font-bold text-cyan-300">0.0 s</p>
                     </div>
                 </div>
+            </div>
 
-                <div class="analytics-card">
-                    <h3 class="text-lg font-bold text-white mb-2">
-                        Evolución del tiempo de espera
-                    </h3>
-                    <p class="text-sm text-slate-400 mb-4">
-                        Promedio acumulado de espera en los andenes.
-                    </p>
-                    <div class="analytics-chart">
-                        <canvas id="analyticsWaitChart"></canvas>
+            <!-- TIEMPOS DE ESPERA -->
+            <div>
+                <h3 class="text-lg font-bold text-cyan-300 mb-4">Análisis de tiempos de espera</h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="analytics-card">
+                        <p class="stat-label">Último tiempo registrado</p>
+                        <p id="a-last" class="text-3xl font-bold text-indigo-300">--</p>
+                    </div>
+                    <div class="analytics-card">
+                        <p class="stat-label">Tiempo mínimo</p>
+                        <p id="a-min" class="text-3xl font-bold text-emerald-300">--</p>
+                    </div>
+                    <div class="analytics-card">
+                        <p class="stat-label">Tiempo máximo</p>
+                        <p id="a-max" class="text-3xl font-bold text-amber-300">--</p>
+                    </div>
+                    <div class="analytics-card">
+                        <p class="stat-label">Total de esperas registradas</p>
+                        <p id="a-wait-count" class="text-3xl font-bold text-cyan-300">0</p>
                     </div>
                 </div>
-
             </div>
-        </div>
 
-        <!-- PARÁMETROS UTILIZADOS -->
-        <div class="analytics-card">
-            <h3 class="text-lg font-bold text-cyan-300 mb-4">
-                Parámetros utilizados en la ejecución
-            </h3>
-
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-5">
-
-                <div>
-                    <p class="stat-label">Llegada promedio (λ)</p>
-                    <p id="a-param-arrival" class="text-2xl font-bold text-emerald-300">--</p>
+            <!-- GRÁFICAS -->
+            <div>
+                <h3 class="text-lg font-bold text-cyan-300 mb-4">Comportamiento de la simulación</h3>
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    <div class="analytics-card">
+                        <h3 class="text-lg font-bold text-white mb-2">Histórico de saturación</h3>
+                        <p class="text-sm text-slate-400 mb-4">Porcentaje acumulado de pasajeros rezagados.</p>
+                        <div class="analytics-chart">
+                            <canvas id="analyticsSaturationChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="analytics-card">
+                        <h3 class="text-lg font-bold text-white mb-2">Evolución del tiempo de espera</h3>
+                        <p class="text-sm text-slate-400 mb-4">Promedio acumulado de espera en los andenes.</p>
+                        <div class="analytics-chart">
+                            <canvas id="analyticsWaitChart"></canvas>
+                        </div>
+                    </div>
                 </div>
-
-                <div>
-                    <p class="stat-label">Validación (μ)</p>
-                    <p id="a-param-turnstile" class="text-2xl font-bold text-amber-300">--</p>
-                </div>
-
-                <div>
-                    <p class="stat-label">Headway</p>
-                    <p id="a-param-headway" class="text-2xl font-bold text-blue-300">--</p>
-                </div>
-
-                <div>
-                    <p class="stat-label">Tiempo de parada</p>
-                    <p id="a-param-dwell" class="text-2xl font-bold text-purple-300">--</p>
-                </div>
-
-                <div>
-                    <p class="stat-label">Aceleración</p>
-                    <p id="a-param-speed" class="text-2xl font-bold text-white">--</p>
-                </div>
-
             </div>
-        </div>
 
-        <p class="text-center text-xs text-slate-500 pb-6">
-            Resultados generados a partir de los eventos registrados durante la simulación.
-        </p>
-
-    </main>
-</section>
+            <!-- PARÁMETROS UTILIZADOS -->
+            <div class="analytics-card">
+                <h3 class="text-lg font-bold text-cyan-300 mb-4">Parámetros utilizados en la ejecución</h3>
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-5">
+                    <div>
+                        <p class="stat-label">Llegada promedio (1/λ)</p>
+                        <p id="a-param-arrival" class="text-2xl font-bold text-emerald-300">--</p>
+                    </div>
+                    <div>
+                        <p class="stat-label">Validación (1/μ)</p>
+                        <p id="a-param-turnstile" class="text-2xl font-bold text-amber-300">--</p>
+                    </div>
+                    <div>
+                        <p class="stat-label">Headway</p>
+                        <p id="a-param-headway" class="text-2xl font-bold text-blue-300">--</p>
+                    </div>
+                    <div>
+                        <p class="stat-label">Tiempo de parada</p>
+                        <p id="a-param-dwell" class="text-2xl font-bold text-purple-300">--</p>
+                    </div>
+                    <div>
+                        <p class="stat-label">Aceleración</p>
+                        <p id="a-param-speed" class="text-2xl font-bold text-white">--</p>
+                    </div>
+                </div>
+            </div>
+            <p class="text-center text-xs text-slate-500 pb-6">Resultados generados a partir de los eventos registrados durante la simulación.</p>
+        </main>
+    </section>
 
     <script>
         // ==========================================
@@ -471,7 +437,6 @@
             return Math.max(1.5, Math.min(time, 9.0));
         }
 
-
         // ==========================================
         // UI BINDINGS & ESTADOS
         // ==========================================
@@ -489,18 +454,56 @@
         
         const paramArrival = document.getElementById('param-arrival');
         const paramTurnstile = document.getElementById('param-turnstile');
+        const paramActiveTs = document.getElementById('param-active-ts');
         const paramHeadway = document.getElementById('param-headway');
         const paramDwell = document.getElementById('param-dwell');
         const paramSpeed = document.getElementById('param-speed');
         
-        paramArrival.addEventListener('input', e => document.getElementById('val-arrival').innerText = parseFloat(e.target.value).toFixed(1) + 's');
-        paramTurnstile.addEventListener('input', e => document.getElementById('val-turnstile').innerText = parseFloat(e.target.value).toFixed(1) + 's');
+        // Función para actualizar los cálculos de Teoría de Colas (Recomendación Profesora)
+        function updateMathRates() {
+            // Se calcula cuántos entran y salen por MINUTO (60 segundos)
+            let lambdaRate = (60 / parseFloat(paramArrival.value)).toFixed(1);
+            let muRate = (60 / parseFloat(paramTurnstile.value)).toFixed(1);
+            let c = parseInt(paramActiveTs.value);
+            let capacity = (muRate * c).toFixed(1);
+            
+            document.getElementById('ui-lambda-rate').innerText = `${lambdaRate} pax/min`;
+            document.getElementById('ui-mu-rate').innerText = `${muRate} pax/min`;
+            document.getElementById('ui-capacity-rate').innerText = `${capacity} pax/min`;
+            
+            // Si la demanda supera la capacidad de los torniquetes, la letra se pone roja para alertar colapso
+            if (parseFloat(lambdaRate) >= parseFloat(capacity)) {
+                document.getElementById('ui-capacity-rate').classList.replace('text-indigo-400', 'text-rose-500');
+                document.getElementById('ui-capacity-rate').classList.add('animate-pulse');
+            } else {
+                document.getElementById('ui-capacity-rate').classList.replace('text-rose-500', 'text-indigo-400');
+                document.getElementById('ui-capacity-rate').classList.remove('animate-pulse');
+            }
+        }
+
+        paramArrival.addEventListener('input', e => { 
+            document.getElementById('val-arrival').innerText = parseFloat(e.target.value).toFixed(1) + 's'; 
+            updateMathRates();
+        });
+        
+        paramTurnstile.addEventListener('input', e => { 
+            document.getElementById('val-turnstile').innerText = parseFloat(e.target.value).toFixed(1) + 's'; 
+            updateMathRates();
+        });
+
+        paramActiveTs.addEventListener('input', e => { 
+            document.getElementById('val-active-ts').innerText = e.target.value; 
+            updateMathRates();
+        });
+        
         paramHeadway.addEventListener('input', e => document.getElementById('val-headway').innerText = e.target.value + 's');
         paramDwell.addEventListener('input', e => document.getElementById('val-dwell').innerText = e.target.value + 's');
         paramSpeed.addEventListener('input', e => document.getElementById('val-speed').innerText = 'x' + e.target.value);
         
-        let isPaused = false;
+        // Llamada inicial para establecer valores de tasas en el panel
+        updateMathRates();
         
+        let isPaused = false;
         const playButton = document.getElementById('btn-play');
         
         playButton.addEventListener('click', () => {
@@ -512,31 +515,30 @@
         document.getElementById('btn-pause').addEventListener('click', () => {
             isPaused = true;
         });
+
         document.getElementById('btn-reset').addEventListener('click', () => {
             resetSimulation();
             isPaused = false;
         });
 
-       document.getElementById('btn-finish').addEventListener('click', () => {
-    isPaused = true;
-    simulationFinished = true;
+        document.getElementById('btn-finish').addEventListener('click', () => {
+            isPaused = true;
+            simulationFinished = true;
 
-    playButton.disabled = true;
-    playButton.textContent = '✓ Finalizada';
-    playButton.classList.add('opacity-50', 'cursor-not-allowed');
+            playButton.disabled = true;
+            playButton.textContent = '✓ Finalizada';
+            playButton.classList.add('opacity-50', 'cursor-not-allowed');
 
-    showAnalyticsPage(true);
-       });
+            showAnalyticsPage(true);
+        });
 
         // BOTÓN PARA REGRESAR A LA SIMULACIÓN
         document.getElementById('btn-back-sim').addEventListener('click', () => {
             hideAnalyticsPage();
         });
 
-
         // Ayuda de controles: aparece abajo y centrada al mover/tocar,
         // y se oculta tras cinco segundos sin actividad. El cursor nunca se oculta.
-        
         let instructionsHideTimer = null;
         function showControlInstructions() {
             const instructions = document.getElementById('instructions');
@@ -591,8 +593,11 @@
         const torsoGeo = new THREE.CylinderGeometry(1.5, 1.5, 5, 8);
         const headGeo = new THREE.SphereGeometry(1.5, 8, 8);
         const turnstileGeo = new THREE.BoxGeometry(8, 12, 12);
+        
         const turnstileMatIn = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.3 }); // Pizarra (Entrada)
+        const turnstileMatOff = new THREE.MeshStandardMaterial({ color: 0x991b1b, transparent: true, opacity: 0.6 }); // Fuera de servicio
         const turnstileMatOut = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.3 }); // Gris (Salida)
+        
         const activeMat = new THREE.MeshStandardMaterial({ color: 0x10b981, emissive: 0x10b981, emissiveIntensity: 0.2 }); // Verde Aprobado
         const errorMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b }); // Ambar (Demora)
         const trainMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.2 }); // Blanco Tren
@@ -719,126 +724,6 @@
             }
         }
 
-        function updateAnalyticsDashboard() {
-    const totalSeconds = baseTime + simTimeElapsed;
-
-    const hrs = Math.floor(totalSeconds / 3600);
-    const mins = Math.floor((totalSeconds % 3600) / 60);
-    const secs = Math.floor(totalSeconds % 60);
-
-    const timeText =
-        `${hrs.toString().padStart(2,'0')}:` +
-        `${mins.toString().padStart(2,'0')}:` +
-        `${secs.toString().padStart(2,'0')}`;
-
-    const avg = stats.platformWaitCount > 0
-        ? stats.platformWaitTotal / stats.platformWaitCount
-        : 0;
-
-    const pct = stats.arrivals > 0
-        ? (stats.rezagados / stats.arrivals) * 100
-        : 0;
-
-    const turnstileTotal = turnstilesIn.reduce(
-        (acc, t) => acc + t.queue.length + (t.processing ? 1 : 0), 0
-    );
-
-    const platformTotal = passengers.filter(p =>
-        !p.isOutbound &&
-        ['WAITING', 'WALKING_PLATFORM', 'CLIMBING', 'WALKING_STAIRS_BASE']
-            .includes(p.state)
-    ).length;
-
-    const values = {
-        'a-time': timeText,
-        'a-arrivals': stats.arrivals,
-        'a-boarded': stats.boarded,
-        'a-late': stats.rezagados,
-        'a-percent': `${pct.toFixed(1)}%`,
-        'a-wait': `${avg.toFixed(1)} s`,
-
-        'a-turnstile': turnstileTotal,
-        'a-platform': platformTotal,
-
-        'a-last': stats.platformWaitLast === null
-            ? '--'
-            : `${stats.platformWaitLast.toFixed(1)} s`,
-
-        'a-min': stats.platformWaitCount > 0
-            ? `${stats.platformWaitMin.toFixed(1)} s`
-            : '--',
-
-        'a-max': stats.platformWaitCount > 0
-            ? `${stats.platformWaitMax.toFixed(1)} s`
-            : '--',
-
-        'a-wait-count': stats.platformWaitCount,
-
-        // Parámetros usados en la simulación
-        'a-param-arrival': `${parseFloat(paramArrival.value).toFixed(1)} s`,
-        'a-param-turnstile': `${parseFloat(paramTurnstile.value).toFixed(1)} s`,
-        'a-param-headway': `${paramHeadway.value} s`,
-        'a-param-dwell': `${paramDwell.value} s`,
-        'a-param-speed': `x${paramSpeed.value}`
-    };
-
-    Object.entries(values).forEach(([id, value]) => {
-        const el = document.getElementById(id);
-        if (el) {
-            el.textContent = value;
-        }
-    });
-}
-
-        function showAnalyticsPage(finalize = false) {
-            if (finalize) {
-                isPaused = true;
-                const totalSeconds = baseTime + simTimeElapsed;
-                const hrs = Math.floor(totalSeconds / 3600);
-                const mins = Math.floor((totalSeconds % 3600) / 60);
-                const secs = Math.floor(totalSeconds % 60);
-                const finalLabel = `${hrs.toString().padStart(2,'0')}:${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
-                if (historyChart) {
-                    const labels = historyChart.data.labels;
-                    if (labels[labels.length - 1] !== finalLabel) {
-                        const finalPct = stats.arrivals > 0 ? (stats.rezagados / stats.arrivals) * 100 : 0;
-                        const finalWait = stats.platformWaitCount > 0 ? stats.platformWaitTotal / stats.platformWaitCount : 0;
-                        historyChart.data.labels.push(finalLabel);
-                        historyChart.data.datasets[0].data.push(Number(finalPct.toFixed(2)));
-                        historyChart.data.datasets[1].data.push(2);
-                        waitHistory.push(Number(finalWait.toFixed(2)));
-                        if (historyChart.data.labels.length > 60) {
-                            historyChart.data.labels.shift();
-                            historyChart.data.datasets.forEach(dataset => dataset.data.shift());
-                            waitHistory.shift();
-                        }
-                        historyChart.update();
-                    }
-                }
-            }
-            updateAnalyticsDashboard();
-            refreshAnalyticsCharts();
-            document.getElementById('analytics-status').textContent = finalize
-                ? 'Simulación finalizada · resultados congelados'
-                : (isPaused ? 'Simulación en pausa · indicadores actuales' : 'Simulación en ejecución · indicadores en tiempo real');
-           document.getElementById('analytics-page').classList.add('active');
-            
-            // Ajustar las gráficas después de mostrar la pantalla
-            requestAnimationFrame(() => {
-                if (analyticsSaturationChart) {
-        analyticsSaturationChart.resize();
-                }
-                
-                if (analyticsWaitChart) {
-                    analyticsWaitChart.resize();
-                }
-            });
-        }
-
-        function hideAnalyticsPage() {
-            document.getElementById('analytics-page').classList.remove('active');
-        }
-
         // ==========================================
         // SETUP RENDERIZADO 3D
         // ==========================================
@@ -863,6 +748,7 @@
             controls.maxPolarAngle = Math.PI / 2 - 0.05; // No ver debajo del suelo
             controls.enableDamping = true;
             controls.dampingFactor = 0.05;
+            
             // Botón izquierdo para rotar; botón/rueda central para hacer zoom.
             controls.mouseButtons = {
                 LEFT: THREE.MOUSE.ROTATE,
@@ -980,6 +866,7 @@
             playButton.disabled = false;
             playButton.textContent = '▶ Play';
             playButton.classList.remove('opacity-50', 'cursor-not-allowed');
+            
             stats = { arrivals: 0, departures: 0, boarded: 0, rezagados: 0, waitingTracker: new Set(), platformWaitTotal: 0, platformWaitCount: 0, platformWaitMin: Infinity, platformWaitMax: 0, platformWaitLast: null };
             
             // Disparador inicial Lognormal/Exponencial
@@ -988,6 +875,7 @@
             // Limpiar gráfica histórica
             lastChartUpdateTime = 0;
             waitHistory = [];
+            
             if (historyChart) {
                 historyChart.data.labels = [];
                 historyChart.data.datasets[0].data = [];
@@ -1016,17 +904,17 @@
             trains.forEach(t => scene.remove(t.mesh));
             trains = [];
 
-            // Recursos: Torniquetes de ENTRADA (Mapeados a la derecha del Layout)
-            for(let i=0; i<6; i++) {
+            // AHORA TENEMOS 9 TORNIQUETES DE ENTRADA EN EL 3D
+            for(let i=0; i<9; i++) {
                 let mesh = new THREE.Mesh(turnstileGeo, turnstileMatIn);
-                mesh.position.set(80 + (i*25), 6, 280);
+                mesh.position.set(20 + (i*25), 6, 280);
                 mesh.castShadow = true;
                 scene.add(mesh);
                 turnstilesIn.push({ id: `IN_${i}`, pos: mesh.position, queue: [], processing: null, timer: 0, mesh: mesh });
             }
 
             // Recursos: Torniquetes de SALIDA (Mapeados a la izquierda)
-            for(let i=0; i<6; i++) {
+            for(let i=0; i<9; i++) {
                 let mesh = new THREE.Mesh(turnstileGeo, turnstileMatOut);
                 mesh.position.set(-205 + (i*25), 6, 280);
                 mesh.castShadow = true;
@@ -1192,7 +1080,7 @@
                     this.target.set(-350, 40, this.platform === 1 ? -160 : 160);
                 } else {
                     this.state = 'WALKING_TO_IN';
-                    this.mesh.position.set(250 + Math.random()*50, 0, 400); 
+                    this.mesh.position.set(200 + Math.random()*100, 0, 400); 
                     scene.add(this.mesh);
                     this.chooseTurnstile(turnstilesIn);
                 }
@@ -1200,8 +1088,12 @@
 
             // Enrutamiento Inteligente (Balanceo de Colas)
             chooseTurnstile(tsArray) {
-                let minQueueLen = Math.min(...tsArray.map(t => t.queue.length));
-                let bestOptions = tsArray.filter(t => t.queue.length === minQueueLen);
+                let activeCount = parseInt(paramActiveTs.value);
+                let availableTs = tsArray.slice(0, activeCount);
+                if(availableTs.length === 0) availableTs = tsArray;
+
+                let minQueueLen = Math.min(...availableTs.map(t => t.queue.length));
+                let bestOptions = availableTs.filter(t => t.queue.length === minQueueLen);
                 this.turnstile = bestOptions[Math.floor(Math.random() * bestOptions.length)];
                 
                 this.turnstile.queue.push(this.id);
@@ -1329,8 +1221,16 @@
 
                 // 2. Procesamiento Lógico en Torniquetes IN (Distribución Lognormal)
                 const meanTurnstile = parseFloat(paramTurnstile.value);
+                let activeCount = parseInt(paramActiveTs.value);
                 
-                turnstilesIn.forEach(t => {
+                turnstilesIn.forEach((t, index) => {
+                    // Control de daños: Si el torniquete está apagado, se pone rojo
+                    if (index >= activeCount) {
+                        t.mesh.material = turnstileMatOff;
+                    } else if (t.processing === null) {
+                        t.mesh.material = turnstileMatIn;
+                    }
+
                     t.queue.forEach(pid => {
                         let p = passengers.find(px => px.id === pid);
                         if(p && p.state === 'WALKING_TO_IN') p.updateQueueTarget();
@@ -1346,7 +1246,6 @@
                             p.mesh.position.set(t.pos.x, 0, t.pos.z); // Anclar al torniquete
                             
                             // APLICACIÓN LÓGICA ESTOCÁSTICA: Tiempo de validación Lognormal
-                            // Permite simular los bloqueos atípicos (tarjetas sin saldo)
                             t.timer = getLognormalTime(meanTurnstile, 2.0); 
                             
                             // Cambio visual si el pasajero tarda más del promedio (Simulando error/demora)
@@ -1362,7 +1261,7 @@
                             t.processing.state = 'PROCESSED';
                             t.processing.advanceState();
                             t.processing = null;
-                            t.mesh.material = turnstileMatIn;
+                            t.mesh.material = (index >= activeCount) ? turnstileMatOff : turnstileMatIn;
                         }
                     }
                 });
@@ -1480,8 +1379,28 @@
             let secs = Math.floor(totalSeconds % 60);
             uiTime.innerText = `${hrs.toString().padStart(2,'0')}:${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
             
+            // LA ECUACIÓN DE CONSERVACIÓN REQUERIDA POR LA PROFESORA
+            let qTs = 0;
+            let qTrans = 0;
+            let qPlat = 0;
+
+            passengers.forEach(p => {
+                if(!p.isOutbound) {
+                    if (['WALKING_TO_IN', 'PROCESSING'].includes(p.state)) {
+                        qTs++;
+                    } else if (['PROCESSED', 'WALKING_STAIRS_BASE', 'CLIMBING'].includes(p.state)) {
+                        qTrans++;
+                    } else if (['WALKING_PLATFORM', 'WAITING', 'BOARDING'].includes(p.state)) {
+                        qPlat++;
+                    }
+                }
+            });
+
             uiArrivals.innerText = stats.arrivals;
             uiBoarded.innerText = stats.boarded;
+            uiTurnstileQueue.innerText = qTs;
+            document.getElementById('ui-transit').innerText = qTrans;
+            uiPlatformQueue.innerText = qPlat;
             uiRezagados.innerText = stats.rezagados;
 
             // Indicadores de tiempo de espera en andén (solo pasajeros que ya abordaron)
@@ -1503,12 +1422,6 @@
                 rezagadosPanel.classList.remove('animate-pulse', 'border-rose-500');
             }
 
-            let turnstileTotal = turnstilesIn.reduce((acc, t) => acc + t.queue.length + (t.processing ? 1 : 0), 0);
-            uiTurnstileQueue.innerText = turnstileTotal;
-
-            let platformTotal = passengers.filter(p => !p.isOutbound && ['WAITING','WALKING_PLATFORM','CLIMBING','WALKING_STAIRS_BASE'].includes(p.state)).length;
-            uiPlatformQueue.innerText = platformTotal;
-
             // Actualizar Gráfica Histórica (Cada 15 segundos simulados para evitar sobrecarga)
             if (simTimeElapsed - lastChartUpdateTime > 15) {
                 lastChartUpdateTime = simTimeElapsed;
@@ -1518,10 +1431,13 @@
                 if (historyChart) {
                     historyChart.data.labels.push(timeLabel);
                     historyChart.data.datasets[0].data.push(parseFloat(rezPct));
+                    
                     const avgWaitSample = stats.platformWaitCount > 0
                         ? stats.platformWaitTotal / stats.platformWaitCount
                         : 0;
                     waitHistory.push(Number(avgWaitSample.toFixed(2)));
+                    
+                    // Mantener ventana de los últimos 60 datos (Sliding Window de ~15 minutos simulados)
                     if (historyChart.data.labels.length > 60) {
                         historyChart.data.labels.shift();
                         historyChart.data.datasets[0].data.shift();
@@ -1531,6 +1447,126 @@
                     refreshAnalyticsCharts();
                 }
             }
+        }
+
+        function showAnalyticsPage(finalize = false) {
+            if (finalize) {
+                isPaused = true;
+                const totalSeconds = baseTime + simTimeElapsed;
+                const hrs = Math.floor(totalSeconds / 3600);
+                const mins = Math.floor((totalSeconds % 3600) / 60);
+                const secs = Math.floor(totalSeconds % 60);
+                const finalLabel = `${hrs.toString().padStart(2,'0')}:${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
+                if (historyChart) {
+                    const labels = historyChart.data.labels;
+                    if (labels[labels.length - 1] !== finalLabel) {
+                        const finalPct = stats.arrivals > 0 ? (stats.rezagados / stats.arrivals) * 100 : 0;
+                        const finalWait = stats.platformWaitCount > 0 ? stats.platformWaitTotal / stats.platformWaitCount : 0;
+                        historyChart.data.labels.push(finalLabel);
+                        historyChart.data.datasets[0].data.push(Number(finalPct.toFixed(2)));
+                        historyChart.data.datasets[1].data.push(2);
+                        waitHistory.push(Number(finalWait.toFixed(2)));
+                        if (historyChart.data.labels.length > 60) {
+                            historyChart.data.labels.shift();
+                            historyChart.data.datasets.forEach(dataset => dataset.data.shift());
+                            waitHistory.shift();
+                        }
+                        historyChart.update();
+                    }
+                }
+            }
+            updateAnalyticsDashboard();
+            refreshAnalyticsCharts();
+            document.getElementById('analytics-status').textContent = finalize
+                ? 'Simulación finalizada · resultados congelados'
+                : (isPaused ? 'Simulación en pausa · indicadores actuales' : 'Simulación en ejecución · indicadores en tiempo real');
+           document.getElementById('analytics-page').classList.add('active');
+           
+            // Ajustar las gráficas después de mostrar la pantalla
+            requestAnimationFrame(() => {
+                if (analyticsSaturationChart) {
+                    analyticsSaturationChart.resize();
+                }
+                
+                if (analyticsWaitChart) {
+                    analyticsWaitChart.resize();
+                }
+            });
+        }
+
+        function hideAnalyticsPage() {
+            document.getElementById('analytics-page').classList.remove('active');
+        }
+
+        function updateAnalyticsDashboard() {
+            const totalSeconds = baseTime + simTimeElapsed;
+
+            const hrs = Math.floor(totalSeconds / 3600);
+            const mins = Math.floor((totalSeconds % 3600) / 60);
+            const secs = Math.floor(totalSeconds % 60);
+
+            const timeText =
+                `${hrs.toString().padStart(2,'0')}:` +
+                `${mins.toString().padStart(2,'0')}:` +
+                `${secs.toString().padStart(2,'0')}`;
+
+            const avg = stats.platformWaitCount > 0
+                ? stats.platformWaitTotal / stats.platformWaitCount
+                : 0;
+
+            const pct = stats.arrivals > 0
+                ? (stats.rezagados / stats.arrivals) * 100
+                : 0;
+
+            // Conservación para la pantalla final
+            let qTs = 0, qTrans = 0, qPlat = 0;
+            passengers.forEach(p => {
+                if(!p.isOutbound) {
+                    if (['WALKING_TO_IN', 'PROCESSING'].includes(p.state)) qTs++;
+                    else if (['PROCESSED', 'WALKING_STAIRS_BASE', 'CLIMBING'].includes(p.state)) qTrans++;
+                    else if (['WALKING_PLATFORM', 'WAITING', 'BOARDING'].includes(p.state)) qPlat++;
+                }
+            });
+
+            const values = {
+                'a-time': timeText,
+                'a-arrivals': stats.arrivals,
+                'a-boarded': stats.boarded,
+                'a-late': stats.rezagados,
+                'a-percent': `${pct.toFixed(1)}%`,
+                'a-wait': `${avg.toFixed(1)} s`,
+
+                'a-turnstile': qTs,
+                'a-platform': qPlat,
+
+                'a-last': stats.platformWaitLast === null
+                    ? '--'
+                    : `${stats.platformWaitLast.toFixed(1)} s`,
+
+                'a-min': stats.platformWaitCount > 0
+                    ? `${stats.platformWaitMin.toFixed(1)} s`
+                    : '--',
+
+                'a-max': stats.platformWaitCount > 0
+                    ? `${stats.platformWaitMax.toFixed(1)} s`
+                    : '--',
+
+                'a-wait-count': stats.platformWaitCount,
+
+                // Parámetros usados en la simulación
+                'a-param-arrival': `${parseFloat(paramArrival.value).toFixed(1)} s`,
+                'a-param-turnstile': `${parseFloat(paramTurnstile.value).toFixed(1)} s`,
+                'a-param-headway': `${paramHeadway.value} s`,
+                'a-param-dwell': `${paramDwell.value} s`,
+                'a-param-speed': `x${paramSpeed.value}`
+            };
+
+            Object.entries(values).forEach(([id, value]) => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.textContent = value;
+                }
+            });
         }
     </script>
 </body>
