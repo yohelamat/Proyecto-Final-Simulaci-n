@@ -67,14 +67,14 @@ Las llegadas se modelan mediante una distribución exponencial, utilizada para r
 
 La tasa promedio de llegada se calcula mediante:
 
-\[
+$$
 \lambda = \frac{60}{T_a}
-\]
+$$
 
 Donde:
 
-- \(\lambda\): tasa promedio de llegada de pasajeros por minuto.
-- \(T_a\): tiempo medio entre llegadas, expresado en segundos.
+- **λ:** tasa promedio de llegada de pasajeros por minuto.
+- **Tₐ:** tiempo medio entre llegadas, expresado en segundos.
 
 ### 7.2. Atención en los torniquetes
 
@@ -82,22 +82,22 @@ El tiempo de validación se genera mediante una distribución lognormal, permiti
 
 La tasa de servicio por torniquete se calcula mediante:
 
-\[
+$$
 \mu = \frac{60}{T_v}
-\]
+$$
 
 La capacidad teórica total de atención se obtiene con:
 
-\[
+$$
 C = \mu \times N
-\]
+$$
 
 Donde:
 
-- \(\mu\): capacidad de atención por torniquete.
-- \(T_v\): tiempo medio de validación en segundos.
-- \(N\): cantidad de torniquetes activos.
-- \(C\): capacidad teórica total de atención por minuto.
+- **μ:** capacidad de atención por torniquete.
+- **Tᵥ:** tiempo medio de validación en segundos.
+- **N:** cantidad de torniquetes activos.
+- **C:** capacidad teórica total de atención por minuto.
 
 ### 7.3. Capacidad de los trenes
 
@@ -123,23 +123,23 @@ Al finalizar la simulación, el sistema presenta indicadores que permiten analiz
 
 Para garantizar la consistencia de los resultados, se utiliza la siguiente relación:
 
-\[
+$$
 \text{Ingresos} = \text{Abordados} + \text{Pendientes al finalizar}
-\]
+$$
 
-Por lo tanto:
+Por lo tanto, la cantidad de pasajeros pendientes se calcula mediante:
 
-\[
+$$
 \text{Pendientes al finalizar} = \text{Ingresos} - \text{Abordados}
-\]
+$$
 
 **Ejemplo:**
 
-Si durante la simulación ingresaron 5,298 pasajeros y abordaron 5,258 pasajeros:
+Si durante la simulación ingresaron 5,298 pasajeros y abordaron 5,258 pasajeros, se realiza la siguiente operación:
 
-\[
+$$
 5,298 - 5,258 = 40
-\]
+$$
 
 El resultado correcto es de **40 pasajeros pendientes al finalizar la simulación**.
 
