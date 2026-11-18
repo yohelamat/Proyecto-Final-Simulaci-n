@@ -220,9 +220,10 @@
             <div class="control-group">
                 <label class="text-xs text-slate-300 flex justify-between font-medium">
                     <span>Capacidad de pasajeros por tren</span>
-                    <span id="val-train-capacity" class="text-fuchsia-400 font-mono">40 pasajeros</span>
+                    <span id="val-train-capacity" class="text-fuchsia-400 font-mono">300 pasajeros</span>
                 </label>
-                <input type="range" id="param-train-capacity" class="slider" min="10" max="300" step="5" value="40">
+                <!-- Se subió el max a 1000 para dar margen y el value inicial a 300 -->
+                <input type="range" id="param-train-capacity" class="slider" min="10" max="1000" step="10" value="300">
                 <p class="text-[10px] text-slate-500 mt-1">Capacidad supuesta y editable para experimentar.</p>
             </div>
 
@@ -294,40 +295,51 @@
         </header>
 
         <main class="max-w-screen-2xl mx-auto p-5 md:p-8 space-y-8">
-            <!-- INDICADORES PRINCIPALES -->
+        <!-- INDICADORES PRINCIPALES -->
             <div>
                 <h3 class="text-lg font-bold text-cyan-300 mb-4">Indicadores generales</h3>
-                <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                
+                <!-- Cambiamos a grid-cols-3 en pantallas grandes para que las 9 tarjetas queden en un 3x3 perfecto -->
+                <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-4">
                     <div class="analytics-card">
-                        <p class="stat-label">Hora que se detuvo la simulación</p>
+                        <p class="stat-label">Hora de detención</p>
                         <p id="a-time" class="text-3xl font-bold text-white font-mono">06:30:00</p>
                     </div>
-                    <div class="analytics-card">
-                        <p class="stat-label">Ingresos</p>
+                    <div class="analytics-card border-emerald-500/30">
+                        <p class="stat-label text-emerald-300">Ingresos Totales (Base)</p>
                         <p id="a-arrivals" class="text-4xl font-bold text-emerald-400">0</p>
-                        <p class="text-xs text-slate-400">Pasajeros ingresados</p>
+                        <p class="text-xs text-slate-400">Pasajeros generados</p>
                     </div>
-                    <div class="analytics-card">
-                        <p class="stat-label">Abordajes</p>
+                    <div class="analytics-card border-indigo-500/30">
+                        <p class="stat-label text-indigo-300">Abordajes (=)</p>
                         <p id="a-boarded" class="text-4xl font-bold text-indigo-400">0</p>
-                        <p class="text-xs text-slate-400">Pasajeros que abordaron</p>
+                        <p class="text-xs text-slate-400">Lograron subir al tren</p>
                     </div>
-                    <div class="analytics-card">
-                        <p class="stat-label">Pasajeros rezagados</p>
+                    
+                    <div class="analytics-card border-amber-500/30">
+                        <p class="stat-label text-amber-300">Personas en torniquetes (+)</p>
+                        <p id="a-turnstile" class="text-4xl font-bold text-amber-300">0</p>
+                        <p class="text-xs text-slate-400">Validando entrada</p>
+                    </div>
+                    <div class="analytics-card border-purple-500/30">
+                        <p class="stat-label text-purple-300">Personas en tránsito (+)</p>
+                        <p id="a-transit" class="text-4xl font-bold text-purple-400">0</p>
+                        <p class="text-xs text-slate-400">Caminando por escaleras</p>
+                    </div>
+                    <div class="analytics-card border-blue-500/30">
+                        <p class="stat-label text-blue-300">Personas en andén (+)</p>
+                        <p id="a-platform" class="text-4xl font-bold text-blue-300">0</p>
+                        <p class="text-xs text-slate-400">Esperando abordar</p>
+                    </div>
+
+                    <div class="analytics-card border-rose-500/30">
+                        <p class="stat-label text-rose-300">Pasajeros rezagados (KPI)</p>
                         <p id="a-late" class="text-4xl font-bold text-rose-400">0</p>
-                        <p class="text-xs text-slate-400">Pasajeros que esperan otro tren</p>
+                        <p class="text-xs text-slate-400">Total histórico (perdieron tren)</p>
                     </div>
                     <div class="analytics-card">
                         <p class="stat-label">Porcentaje de rezagados</p>
                         <p id="a-percent" class="text-4xl font-bold text-rose-300">0.0%</p>
-                    </div>
-                    <div class="analytics-card">
-                        <p class="stat-label">Fila de torniquetes</p>
-                        <p id="a-turnstile" class="text-4xl font-bold text-amber-300">0</p>
-                    </div>
-                    <div class="analytics-card">
-                        <p class="stat-label">Personas en andenes</p>
-                        <p id="a-platform" class="text-4xl font-bold text-blue-300">0</p>
                     </div>
                     <div class="analytics-card">
                         <p class="stat-label">Tiempo promedio de espera</p>
@@ -1442,26 +1454,35 @@
             let qTrans = 0;
             let qPlat = 0;
 
+            // Contar dónde está cada pasajero físicamente en este momento
             passengers.forEach(p => {
                 if(!p.isOutbound) {
                     if (['WALKING_TO_IN', 'PROCESSING'].includes(p.state)) {
                         qTs++;
                     } else if (['PROCESSED', 'WALKING_STAIRS_BASE', 'CLIMBING'].includes(p.state)) {
                         qTrans++;
-                    } else if (['WALKING_PLATFORM', 'WAITING', 'BOARDING'].includes(p.state)) {
+                    } else if (['WALKING_PLATFORM', 'WAITING'].includes(p.state)) {
                         qPlat++;
                     }
+                    // OJO: Se quitó 'BOARDING' de qPlat, porque si está 'BOARDING' ya cuenta como abordado
                 }
             });
 
+            // APLICAMOS TU FÓRMULA DE ABORDAJES: Ingresos - (Fila Torniquetes + Escaleras + Andén)
+            let calculatedBoarded = stats.arrivals - (qTs + qTrans + qPlat);
+            
+            // Seguridad: Nunca mostrar números negativos si el DOM se desfasa un milisegundo
+            calculatedBoarded = Math.max(0, calculatedBoarded);
+
+            // Actualizar el DOM
             uiArrivals.innerText = stats.arrivals;
-            uiBoarded.innerText = stats.boarded;
+            uiBoarded.innerText = calculatedBoarded; 
             uiTurnstileQueue.innerText = qTs;
             document.getElementById('ui-transit').innerText = qTrans;
             uiPlatformQueue.innerText = qPlat;
             uiRezagados.innerText = stats.rezagados;
 
-            // Indicadores de tiempo de espera en andén (solo pasajeros que ya abordaron)
+            // Indicadores de tiempo de espera en andén
             const avgPlatformWait = stats.platformWaitCount > 0 ? stats.platformWaitTotal / stats.platformWaitCount : null;
             uiPlatformAvg.innerText = avgPlatformWait === null ? '0.0 s' : `${avgPlatformWait.toFixed(1)} s`;
             uiPlatformLast.innerText = stats.platformWaitLast === null ? '--' : `${stats.platformWaitLast.toFixed(1)} s`;
@@ -1480,7 +1501,7 @@
                 rezagadosPanel.classList.remove('animate-pulse', 'border-rose-500');
             }
 
-            // Actualizar Gráfica Histórica (Cada 15 segundos simulados para evitar sobrecarga)
+            // Actualizar Gráfica Histórica (Cada 15 segundos simulados)
             if (simTimeElapsed - lastChartUpdateTime > 15) {
                 lastChartUpdateTime = simTimeElapsed;
                 
@@ -1495,7 +1516,6 @@
                         : 0;
                     waitHistory.push(Number(avgWaitSample.toFixed(2)));
                     
-                    // Mantener ventana de los últimos 60 datos (Sliding Window de ~15 minutos simulados)
                     if (historyChart.data.labels.length > 60) {
                         historyChart.data.labels.shift();
                         historyChart.data.datasets[0].data.shift();
@@ -1640,25 +1660,34 @@
                 ? (stats.rezagados / stats.arrivals) * 100
                 : 0;
 
-            // Conservación para la pantalla final
+            // Conservación estricta para la pantalla final (Idéntico a updateUI)
             let qTs = 0, qTrans = 0, qPlat = 0;
             passengers.forEach(p => {
                 if(!p.isOutbound) {
-                    if (['WALKING_TO_IN', 'PROCESSING'].includes(p.state)) qTs++;
-                    else if (['PROCESSED', 'WALKING_STAIRS_BASE', 'CLIMBING'].includes(p.state)) qTrans++;
-                    else if (['WALKING_PLATFORM', 'WAITING', 'BOARDING'].includes(p.state)) qPlat++;
+                    if (['WALKING_TO_IN', 'PROCESSING'].includes(p.state)) {
+                        qTs++;
+                    } else if (['PROCESSED', 'WALKING_STAIRS_BASE', 'CLIMBING'].includes(p.state)) {
+                        qTrans++;
+                    } else if (['WALKING_PLATFORM', 'WAITING'].includes(p.state)) {
+                        qPlat++; // Sin BOARDING, si está abordando ya cuenta como abordado
+                    }
                 }
             });
+
+            // Forzamos matemáticamente el cuadro de la Ecuación de Conservación
+            let calculatedBoarded = stats.arrivals - (qTs + qTrans + qPlat);
+            calculatedBoarded = Math.max(0, calculatedBoarded);
 
             const values = {
                 'a-time': timeText,
                 'a-arrivals': stats.arrivals,
-                'a-boarded': stats.boarded,
+                'a-boarded': calculatedBoarded, // Usamos el valor riguroso de la ecuación
                 'a-late': stats.rezagados,
                 'a-percent': `${pct.toFixed(1)}%`,
                 'a-wait': `${avg.toFixed(1)} s`,
 
                 'a-turnstile': qTs,
+                'a-transit': qTrans, // Nueva tarjeta enlazada
                 'a-platform': qPlat,
 
                 'a-last': stats.platformWaitLast === null
